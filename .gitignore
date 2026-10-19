@@ -1,0 +1,33 @@
+# Rails
+api/log/*
+api/tmp/*
+!api/log/.keep
+!api/tmp/.keep
+api/storage/*
+api/.bundle
+api/config/master.key
+api/coverage
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Node / web (phase 3)
+node_modules/
+web/dist/
+
+# Terraform (phase 6)
+infra/**/.terraform/
+*.tfstate
+*.tfstate.*
+
+# Mobile (phases 7-8)
+ios/**/xcuserdata/
+ios/**/DerivedData/
+android/.gradle/
+android/**/build/
+android/local.properties
+
+.DS_Store

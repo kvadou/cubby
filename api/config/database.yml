@@ -1,0 +1,21 @@
+# DATABASE_URL wins when set (compose, CI, EKS). Locally, Rails talks to the compose Postgres on 5433.
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("DB_HOST") { "localhost" } %>
+  port: <%= ENV.fetch("DB_PORT") { 5433 } %>
+  username: <%= ENV.fetch("DB_USER") { "cubby" } %>
+  password: <%= ENV.fetch("DB_PASSWORD") { "cubby" } %>
+
+development:
+  <<: *default
+  database: cubby_development
+
+test:
+  <<: *default
+  database: cubby_test
+
+production:
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] %>

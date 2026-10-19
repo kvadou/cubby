@@ -1,0 +1,48 @@
+# Local stack. `docker compose up` gives a seeded center at http://localhost:3000.
+# Postgres and Redis use non-default host ports so they don't collide with Homebrew services.
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: cubby
+      POSTGRES_PASSWORD: cubby
+      POSTGRES_DB: cubby_development
+    ports: ["5433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cubby"]
+      interval: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6380:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+
+  api: &api
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    command: bash -c "rm -f tmp/pids/server.pid && bin/rails db:prepare && bin/rails db:seed && bin/rails server -b 0.0.0.0 -p 3000"
+    environment: &api_env
+      RAILS_ENV: development
+      DATABASE_URL: postgres://cubby:cubby@db:5432/cubby_development
+      REDIS_URL: redis://redis:6379/0
+    ports: ["3000:3000"]
+    volumes: [./api:/app]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  sidekiq:
+    <<: *api
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    ports: []
+    depends_on:
+      api: { condition: service_started }
+
+volumes:
+  pgdata:

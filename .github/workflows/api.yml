@@ -1,0 +1,41 @@
+name: api
+
+on:
+  push:
+    branches: [main]
+    paths: ["api/**", ".github/workflows/api.yml"]
+  pull_request:
+    paths: ["api/**", ".github/workflows/api.yml"]
+
+defaults:
+  run:
+    working-directory: api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: cubby
+          POSTGRES_PASSWORD: cubby
+        ports: ["5433:5432"]
+        options: --health-cmd "pg_isready -U cubby" --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6380:6379"]
+    env:
+      RAILS_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.1"
+          bundler-cache: true
+          working-directory: api
+      - run: bin/rails db:prepare
+      - run: bundle exec rspec
+      - run: bundle exec rubocop
+      - run: bundle exec brakeman -q --no-pager --exit-on-warn
+      - run: bundle exec bundler-audit check --update
