@@ -55,13 +55,15 @@ Rails publishes domain events (`action.proposed`, `action.approved`, `invoice.pa
 |---|---|---|
 | 1 | Rails API + Sidekiq + Postgres + Redis in Docker Compose, schema, realistic seeds, RSpec, GitHub Actions CI | `docker compose up` gives a seeded center; CI green |
 | 2 | Detectors + `ScanCenterJob`, idempotent queue | Specs cover each rule; double scan creates no duplicates |
-| 3 | React + TypeScript director app: inbox, approve/edit/dismiss, outbox | Full loop in browser, desktop and phone widths |
+| 3 | Auth (director sessions for web, JWT for mobile), every query scoped to the signed-in user's center; React + TypeScript director app: inbox, approve/edit/dismiss, outbox | Request specs prove one center can't read another's data; full loop in browser, desktop and phone widths |
 | 4 | Bedrock drafting, pgvector policy retrieval, "Ask Cubby" agent, evals | Drafts cite policies; eval score prints and shows in UI |
 | 5 | Events: SNS → SQS → analytics consumer, `/analytics` page (LocalStack locally) | Approving an action shows up in analytics |
 | 6 | AWS via Terraform: VPC, EKS, RDS, ElastiCache, ECR, S3+CloudFront, SNS/SQS, IAM (IRSA for Bedrock), CloudWatch; FluxCD GitOps; `make up` / `make down` | Live demo URL works end to end; teardown leaves only S3/CloudFront/ECR/state |
 | 7 | iOS parent app (SwiftUI) | Runs in simulator against the live or local API; screenshots |
 | 8 | Android parent app (Kotlin, Compose) | Runs in emulator; screenshots |
 | 9 | README with architecture diagram, portfolio case study, resume line | pw-verify clean, case study live |
+
+**Deploy gate:** nothing is deployed (phase 6) until phase 3 auth and center scoping are in place. Phase 1 and 2 APIs are unauthenticated on purpose, local only, fictional data.
 
 ## Cost (on-demand mode)
 Running: about $5 to $6 a day (EKS control plane, two small Graviton nodes, db.t4g.micro RDS, cache.t4g.micro, ALB, minimal NAT). Idle: S3, CloudFront, ECR, Terraform state, and RDS snapshots, roughly $2 to $5 a month. Bedrock usage is cents. An AWS Budgets alarm at $50/month is created in phase 6.

@@ -4,6 +4,7 @@
 #
 # Idempotent: does nothing if the center already exists. `bin/rails db:seed:replant` rebuilds it.
 
+return if Rails.env.test?
 return if Center.exists?(name: "Little Oaks Early Learning")
 
 Faker::Config.random = Random.new(42)

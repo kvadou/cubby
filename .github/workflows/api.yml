@@ -34,7 +34,7 @@ jobs:
           ruby-version: "4.0.1"
           bundler-cache: true
           working-directory: api
-      - run: bin/rails db:prepare
+      - run: bin/rails db:create db:schema:load
       - run: bundle exec rspec
       - run: bundle exec rubocop
       - run: bundle exec brakeman -q --no-pager --exit-on-warn

@@ -49,6 +49,8 @@ bundle exec rspec
 
 ## API (phase 1, read only)
 
+Unauthenticated on purpose while it only runs locally against fictional seed data. Authentication and per-center scoping arrive in phase 3, before any deploy.
+
 | Endpoint | Returns |
 |---|---|
 | `GET /api/v1/centers/:id` | Center summary with enrolled, waitlisted, and past-due counts |
