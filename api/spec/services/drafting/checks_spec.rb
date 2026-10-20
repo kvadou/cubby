@@ -63,3 +63,26 @@ RSpec.describe Drafting::Checks do
     expect(checks["names_child_and_room"].first).to be(false)
   end
 end
+
+RSpec.describe Drafting::Checks, "review hardening" do
+  let(:fee) { Drafting::Prompt::Excerpt.new(id: "P1", title: "Late payments and late fees", body: "A late fee of $35 is added.") }
+
+  def run(body, citations: [], facts: { guardian_first_name: "Roman", total_cents: 270_000 })
+    described_class.run(kind: "past_due_invoice", facts: facts, director_name: "Renee Albright", excerpts: [ fee ],
+                        draft: { "subject" => "s", "body" => body, "policy_citations" => citations })
+  end
+
+  it "catches written-out amounts and charges that aren't called fees" do
+    checks = run("Hi Roman, a late charge of 40 dollars applies to $2,700.00. Renee Albright")
+    expect(checks["no_unsupported_amounts"].first).to be(false)
+    expect(checks["fees_cited"].first).to be(false)
+  end
+
+  it "does not stretch extra digits into cents" do
+    expect(described_class.amounts("$1,234.567")).to eq([ 123_400 ])
+  end
+
+  it "fails the greeting check when the guardian name is missing" do
+    expect(run("Hi there, $2,700.00. Renee Albright", facts: { total_cents: 270_000 })["greets_guardian"].first).to be(false)
+  end
+end

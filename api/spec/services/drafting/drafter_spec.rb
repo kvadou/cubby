@@ -61,6 +61,13 @@ RSpec.describe Drafting::Drafter do
     expect(action.reload).to have_attributes(draft_status: "failed", draft_error: "throttled")
   end
 
+  it "marks a draft failed when Sidekiq gives up, instead of leaving it pending" do
+    ProposedAction.where(id: action.id).update_quietly(draft_status: "pending")
+    DraftActionJob.sidekiq_retries_exhausted_block.call({ "args" => [ action.id ] }, StandardError.new("timeout"))
+    expect(action.reload).to have_attributes(draft_status: "failed", lock_version: 0)
+    expect(action.draft_error).to include("timeout")
+  end
+
   it "does not touch an action the director already decided" do
     action.dismiss!(by: "user:1")
     described_class.new(llm: BedrockHelpers::FakeLlm.new(good)).call(action)

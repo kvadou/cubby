@@ -38,7 +38,21 @@ RSpec.describe Agent::AskCubby do
     expect(answer.text).to include("couldn't finish")
   end
 
-  it "reports a bad date to the model instead of raising" do
-    expect(Agent::Tools.new(center).run("classroom_staffing", { "date" => "tomorrow" })).to eq(error: "dates look like 2026-10-20")
+  it "reports bad model-chosen inputs to the model instead of raising" do
+    tools = Agent::Tools.new(center)
+    expect(tools.run("classroom_staffing", { "date" => "tomorrow" })).to eq(error: "dates look like 2026-10-20")
+    expect(tools.run("classroom_staffing", { "date" => 20_261_020 })).to include(date: Date.new(2026, 10, 20))
+    expect(tools.run("waitlist", { "classroom_name" => 5 })).to eq(error: "no classroom named 5")
+  end
+
+  it "matches classroom names exactly, so wildcards find nothing" do
+    create(:classroom, center: center, name: "Maples")
+    expect(Agent::Tools.new(center).run("waitlist", { "classroom_name" => "%" })).to eq(error: "no classroom named %")
+    expect(Agent::Tools.new(center).run("waitlist", { "classroom_name" => "maples" })).to eq(waitlist: [])
+  end
+
+  it "turns a network timeout into an unavailable error" do
+    client.stub_responses(:converse, Seahorse::Client::NetworkingError.new(Net::ReadTimeout.new))
+    expect { described_class.new(center: center, client: client).call("Hi") }.to raise_error(Ai::Bedrock::Error)
   end
 end

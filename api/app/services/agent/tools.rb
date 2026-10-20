@@ -29,13 +29,13 @@ module Agent
       input = input.to_h.stringify_keys
       case name
       when "find_family" then find_family(input["name"].to_s)
-      when "classroom_staffing" then classroom_staffing(input["date"])
-      when "waitlist" then waitlist(input["classroom_name"])
+      when "classroom_staffing" then classroom_staffing(input["date"].to_s)
+      when "waitlist" then waitlist(input["classroom_name"].to_s)
       when "search_policies" then search_policies(input["query"].to_s)
       when "open_actions" then open_actions
       else { error: "unknown tool #{name}" }
       end
-    rescue Date::Error
+    rescue Date::Error, TypeError, ArgumentError
       { error: "dates look like 2026-10-20" }
     end
 
@@ -80,7 +80,7 @@ module Agent
     end
 
     def waitlist(classroom_name)
-      room = classroom_name.present? ? center.classrooms.find_by("name ILIKE ?", classroom_name.strip) : nil
+      room = classroom_name.present? ? center.classrooms.find_by("LOWER(name) = ?", classroom_name.strip.downcase) : nil
       return { error: "no classroom named #{classroom_name}" } if classroom_name.present? && room.nil?
 
       rows = Enrollment.waitlisted.joins(child: :family).where(families: { center_id: center.id }).includes(:child)

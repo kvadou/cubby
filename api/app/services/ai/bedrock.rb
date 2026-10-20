@@ -17,10 +17,15 @@ module Ai
 
     class Error < StandardError; end
 
+    # Failures that mean "the model is unavailable right now", including timeouts and dropped connections.
+    TRANSIENT = [ Aws::Errors::ServiceError, Aws::Errors::MissingCredentialsError, Seahorse::Client::NetworkingError ].freeze
+
     module_function
 
     def client
-      @client ||= Aws::BedrockRuntime::Client.new(region: ENV.fetch("AWS_REGION", "us-east-1"))
+      # Short timeouts and one retry keep a web request or a job from hanging on a slow model call.
+      @client ||= Aws::BedrockRuntime::Client.new(region: ENV.fetch("AWS_REGION", "us-east-1"),
+                                                  http_open_timeout: 5, http_read_timeout: 30, retry_limit: 1)
     end
 
     def client=(value)
@@ -38,7 +43,7 @@ module Ai
       resp = client.invoke_model(model_id: MODELS[:embed], content_type: "application/json",
                                  accept: "application/json", body: body)
       JSON.parse(resp.body.read).fetch("embedding")
-    rescue Aws::Errors::ServiceError, Aws::Errors::MissingCredentialsError => e
+    rescue *TRANSIENT => e
       raise Error, "embedding failed: #{e.message}"
     end
 
@@ -57,7 +62,7 @@ module Ai
       usage = resp.usage
       Result.new(input: use.input.to_h.deep_stringify_keys, model: model, input_tokens: usage.input_tokens,
                  output_tokens: usage.output_tokens, cost_micros: cost_micros(model, usage.input_tokens, usage.output_tokens))
-    rescue Aws::Errors::ServiceError, Aws::Errors::MissingCredentialsError => e
+    rescue *TRANSIENT => e
       raise Error, e.message
     end
   end

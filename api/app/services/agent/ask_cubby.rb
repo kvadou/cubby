@@ -3,6 +3,8 @@ module Agent
   # is bounded, every tool call is returned as a visible step, and nothing can be changed or sent.
   class AskCubby
     MAX_TURNS = 6
+    # Wall-clock budget for one question, so a slow model can't hold a web thread for minutes.
+    DEADLINE = 45
 
     Answer = Data.define(:text, :steps, :model, :input_tokens, :output_tokens, :cost_micros)
 
@@ -26,7 +28,10 @@ module Agent
       steps = []
       tokens = [ 0, 0 ]
 
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       MAX_TURNS.times do
+        break if Process.clock_gettime(Process::CLOCK_MONOTONIC) - started > DEADLINE
+
         resp = @client.converse(model_id: @model, system: [ { text: "#{SYSTEM}\nToday is #{@center.today.strftime('%A, %B %-d, %Y')} at #{@center.name}." } ],
                                 messages: messages, inference_config: { max_tokens: 1000, temperature: 0.2 },
                                 tool_config: { tools: Tools::SPECS })
@@ -43,7 +48,7 @@ module Agent
         end }
       end
       answer("I couldn't finish looking that up. Try a narrower question.", steps, tokens)
-    rescue Aws::Errors::ServiceError, Aws::Errors::MissingCredentialsError => e
+    rescue *Ai::Bedrock::TRANSIENT => e
       raise Ai::Bedrock::Error, e.message
     end
 

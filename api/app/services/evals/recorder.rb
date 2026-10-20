@@ -14,7 +14,8 @@ module Evals
     end
 
     def structured(model:, system:, prompt:, tool:, **options)
-      key = Digest::SHA256.hexdigest([ model, system, prompt, tool[:name], JSON.generate(tool[:input_schema]) ].join("\u0000")).first(20)
+      parts = [ model, system, prompt, tool[:name], JSON.generate(tool[:input_schema]), JSON.generate(options.sort.to_h) ]
+      key = Digest::SHA256.hexdigest(parts.join("\u0000")).first(20)
       path = @dir.join("#{key}.json")
       @used << path
       if @live

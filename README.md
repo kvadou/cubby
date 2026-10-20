@@ -22,8 +22,8 @@ Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go de
 | 1 | Rails API, Sidekiq, Postgres, Redis, schema, seed data, RSpec, CI | Done |
 | 2 | Detectors and the idempotent action queue | Done |
 | 3 | Auth, center scoping, React + TypeScript director app | Done |
-| 4 | Bedrock drafting, policy retrieval, agent, evals | Next |
-| 5 | Events: SNS to SQS to analytics | Planned |
+| 4 | Bedrock drafting, policy retrieval, agent, evals | Built and tested; live runs waiting on AWS Bedrock access |
+| 5 | Events: SNS to SQS to analytics | Next |
 | 6 | AWS via Terraform, EKS, FluxCD | Planned |
 | 7 | iOS parent app | Planned |
 | 8 | Android parent app | Planned |
@@ -74,6 +74,18 @@ Every endpoint except sign-in needs a session, and every center endpoint is scop
 | `POST /api/v1/centers/:id/proposed_actions/:id/approve\|dismiss\|snooze` | Decisions; send the `lock_version` you saw, and a stale one returns 409 with the current row |
 
 **Security model.** Cookie-authenticated writes must come from the app's own origin (`Sec-Fetch-Site: same-origin`, or a trusted `Origin` from older browsers), modeled on Rails 8.2's header-based CSRF protection; bearer requests are exempt because browsers never attach them on their own. Sign-in is rate limited per IP and per email across both endpoints. The web app is served from the same origin as the API (Vite proxy locally, CloudFront path routing in AWS), so there is no CORS.
+
+## AI (phase 4)
+
+Design and evidence: [`docs/prior-art/2026-10-19-phase4-ai.md`](docs/prior-art/2026-10-19-phase4-ai.md).
+
+- **Drafting** (`api/app/services/drafting/`): after each scan, a Sidekiq job drafts a message for every new family-facing action. Claude on Bedrock (Haiku 4.5 by default, set by `BEDROCK_DRAFT_MODEL`) receives only the action's facts snapshot (never contact details) and the most relevant sections of the center's handbook, and must answer through a forced `submit_draft` tool call with a subject, body, and policy citations.
+- **Checks before a director sees it** (`Drafting::Checks`): the balance is stated, every dollar amount comes from the facts or a cited policy, any fee is backed by a cited policy, the greeting and sign-off are right, there are no contact details, markdown, or placeholders, and the length is sane. A failing draft gets one retry with the failures as feedback; if it still fails, the director gets plain starting text instead. Background draft writes never bump `lock_version`, so a director mid-review is never interrupted.
+- **Retrieval** (`api/app/services/policies/`): the handbook is split into one chunk per section, embedded with Titan Text Embeddings V2 (1024 dimensions) and searched by cosine distance in pgvector (HNSW), always within one center.
+- **Ask Cubby** (`api/app/services/agent/`): a director's question answered by Claude with five read-only, center-scoped tools (find a family, staffing by date, waitlist, handbook search, the queue), at most six turns, with every tool call shown in the UI. It cannot change or send anything.
+- **Evals** (`bin/rails evals:drafts`): nine golden cases, including one with an instruction planted in the facts, run through the real prompt, checks, and retry path, then graded for tone and clarity by a different model. Responses are recorded so CI can grade without AWS; `EVALS_LIVE=1` re-records. The latest score appears in the review drawer.
+
+To run AI features locally, give the containers the `cubby` profile's credentials with `bin/aws-env` (writes a gitignored `.env.aws`), then `docker compose up -d api sidekiq` and `docker compose exec api bin/rails cubby:policies:index`.
 
 ## How the action queue works (phase 2)
 

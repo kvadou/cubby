@@ -2,7 +2,9 @@ module Drafting
   # Deterministic checks every draft must pass before a director sees it, and the first layer of the
   # eval suite (docs/prior-art/2026-10-19-phase4-ai.md, D3). Each returns [passed, detail].
   module Checks
-    MONEY = /\$\s?\d[\d,]*(?:\.\d{2})?/
+    # "$1,950.00", "$35", and written-out amounts like "40 dollars" or "40 USD".
+    MONEY = /\$\s?\d[\d,]*(?:\.\d{2})?\b|\b\d[\d,]*(?:\.\d{2})?\s*(?:dollars?|usd)\b/i
+    FEE = /\b(?:fees?|charges?|penalt(?:y|ies)|surcharges?|fines?)\b/i
     EMAIL = /[\w.+-]+@[\w-]+\.[\w.]+/
     PHONE = /\(?\b\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/
     MARKDOWN = /(\*\*|__|^#+\s|^\s*[-*]\s|\[[^\]]*\])/
@@ -15,8 +17,8 @@ module Drafting
       body = draft["body"].to_s
       cited = excerpts.select { |e| Array(draft["policy_citations"]).include?(e.id) }
       checks = {
-        "greets_guardian" => check(body.first(80).include?(facts["guardian_first_name"].to_s), "opens with the guardian's first name"),
-        "signed_by_director" => check(body.last(80).include?(director_name.to_s.split.first.to_s), "signs off with the director"),
+        "greets_guardian" => check(present_in?(body.first(80), facts["guardian_first_name"]), "opens with the guardian's first name"),
+        "signed_by_director" => check(present_in?(body.last(80), director_name.to_s.split.first), "signs off with the director"),
         "citations_valid" => citations_valid(draft, excerpts),
         "no_unsupported_amounts" => no_unsupported_amounts(body, facts, cited),
         "fees_cited" => fees_cited(body, cited),
@@ -41,9 +43,12 @@ module Drafting
 
     def check(ok, detail) = [ ok, detail ]
 
+    # A blank expected value never counts as present.
+    def present_in?(text, value) = value.to_s.strip.present? && text.include?(value.to_s.strip)
+
     # Dollar amounts in text, as cents.
     def amounts(text)
-      text.scan(MONEY).map { |m| (m.delete("$, ").to_f * 100).round }
+      text.scan(MONEY).map { |m| (m.gsub(/[^\d.]/, "").to_f * 100).round }
     end
 
     def citations_valid(draft, excerpts)
@@ -60,9 +65,9 @@ module Drafting
     end
 
     def fees_cited(body, cited)
-      return check(true, "mentions no fee") unless body.match?(/\bfees?\b/i)
+      return check(true, "mentions no fee or charge") unless body.match?(FEE)
 
-      check(cited.any? { |e| e.body.match?(/\bfees?\b/i) }, "a fee is mentioned, so a fee policy is cited")
+      check(cited.any? { |e| e.body.match?(FEE) }, "a fee or charge is mentioned, so a policy stating it is cited")
     end
   end
 end
