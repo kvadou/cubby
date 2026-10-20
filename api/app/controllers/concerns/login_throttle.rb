@@ -9,6 +9,9 @@ module LoginThrottle
     # from everywhere, and guessing one account still needs a fresh IP every 5 tries.
     rate_limit to: 5, within: 3.minutes, only: :create, scope: "login", name: "email",
                by: -> { "#{params[:email_address].to_s.strip.downcase}|#{request.remote_ip}" }, with: -> { render_rate_limited }
+    # Backstop for one account guessed from many addresses.
+    rate_limit to: 50, within: 1.hour, only: :create, scope: "login", name: "account",
+               by: -> { params[:email_address].to_s.strip.downcase }, with: -> { render_rate_limited }
   end
 
   private

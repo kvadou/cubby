@@ -5,7 +5,9 @@ module Api
 
       rate_limit to: 20, within: 10.minutes, only: :create, by: -> { Current.user.id }, scope: "ask",
                  with: -> { render json: { error: "rate_limited", message: "That's a lot of questions. Try again in a few minutes." }, status: :too_many_requests }
-      # A ceiling on Bedrock spend for everyone together, since the demo directors are shared logins.
+      # Daily ceilings on Bedrock spend: per user, and for everyone together (the demo logins are shared).
+      rate_limit to: 100, within: 1.day, only: :create, by: -> { Current.user.id }, scope: "ask", name: "user-daily",
+                 with: -> { render json: { error: "rate_limited", message: "That's today's limit for your account. Try again tomorrow." }, status: :too_many_requests }
       rate_limit to: ENV.fetch("CUBBY_ASK_DAILY_LIMIT", 300).to_i, within: 1.day, only: :create, by: -> { "all" },
                  scope: "ask", name: "daily",
                  with: -> { render json: { error: "rate_limited", message: "Ask Cubby has hit today's limit. Try again tomorrow." }, status: :too_many_requests }
