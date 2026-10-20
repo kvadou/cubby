@@ -41,6 +41,21 @@ RSpec.describe "Family (parent) API", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  it "treats a malformed days value as the default" do
+    get "/api/v1/family/children/#{child.id}/attendance?days[]=1", headers: bearer(token)
+    expect(response).to have_http_status(:ok)
+  end
+
+  it "ignores an AI-written subject line the director never saw" do
+    action = create(:proposed_action, center: center, subject: family, draft_subject: "Unreviewed subject")
+    action.approve!(by: "user:1", final_body: "Reviewed body")
+    expect(FamilyMessage.sole.subject).to eq("Your tuition balance at Little Oaks")
+  end
+
+  it "allows one family per parent account" do
+    expect { Guardianship.create!(user: parent, family: other_family) }.to raise_error(ActiveRecord::RecordNotUnique)
+  end
+
   it "returns a child's recent attendance" do
     get "/api/v1/family/children/#{child.id}/attendance?days=7", headers: bearer(token)
     expect(json.size).to eq(1)
@@ -74,6 +89,11 @@ RSpec.describe "Family (parent) API", type: :request do
 
   describe "a parent on director endpoints" do
     let!(:action) { create(:proposed_action, center: center, subject: family) }
+
+    it "404s on the eval summary" do
+      get "/api/v1/evals/latest", headers: bearer(token)
+      expect(response).to have_http_status(:not_found)
+    end
 
     %w[%s %s/invoices %s/enrollments %s/proposed_actions %s/analytics].each do |template|
       it "404s on GET /centers/#{template % ':id'}" do

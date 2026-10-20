@@ -14,7 +14,7 @@ module Api
             today: today,
             unread_messages: family.messages.unread.count,
             children: children.map { |child|
-              enrollment = child.active_enrollment
+              enrollment = child.enrollments.find { |e| %w[waitlisted enrolled].include?(e.status) } # preloaded
               day = attendance[child.id]
               {
                 id: child.id,

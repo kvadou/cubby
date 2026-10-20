@@ -6,7 +6,7 @@ module Api
 
         def index
           child = current_family.children.find(params[:child_id])
-          days = params.fetch(:days, 14).to_i.clamp(1, MAX_DAYS)
+          days = (Integer(params[:days].to_s, exception: false) || 14).clamp(1, MAX_DAYS)
           today = current_family.center.today
           records = child.attendances.includes(:classroom).where(on: (today - (days - 1))..today).order(on: :desc)
 

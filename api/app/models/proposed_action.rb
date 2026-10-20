@@ -125,8 +125,9 @@ class ProposedAction < ApplicationRecord
   def deliver_to_family!(body, now)
     raise InvalidTransition, "action #{id} has no message to send" if body.blank?
 
+    # A fixed subject: the director reviews and edits only the body, so nothing unreviewed goes out.
     FamilyMessage.create!(family: family, center_id: center_id, proposed_action_id: id, body: body, sent_at: now,
-                          subject: draft_subject.presence || format(DEFAULT_SUBJECTS.fetch(kind), center.name))
+                          subject: format(DEFAULT_SUBJECTS.fetch(kind), center.name))
   end
 
   # How the approved message came about, for the "drafts used as written" metric.

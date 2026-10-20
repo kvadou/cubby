@@ -2,6 +2,9 @@ module Api
   module V1
     # Latest draft eval, shown beside drafts so a director can see how drafts are graded.
     class EvalsController < BaseController
+      # Directors only: parents have no center.
+      before_action { render(json: { error: "not_found" }, status: :not_found) if Current.user.centers.none? }
+
       def latest
         run = EvalRun.where(suite: "drafts").order(created_at: :desc).first
         return render(json: nil) unless run

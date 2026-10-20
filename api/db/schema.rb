@@ -146,6 +146,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000005) do
     t.index ["family_id"], name: "index_guardianships_on_family_id"
     t.index ["user_id", "family_id"], name: "index_guardianships_on_user_id_and_family_id", unique: true
     t.index ["user_id"], name: "index_guardianships_on_user_id"
+    t.index ["user_id"], name: "index_guardianships_one_family_per_user", unique: true
   end
 
   create_table "invoices", force: :cascade do |t|

@@ -5,6 +5,8 @@ class CreateFamilyAccess < ActiveRecord::Migration[8.1]
       t.references :user, null: false, foreign_key: true
       t.references :family, null: false, foreign_key: true
       t.timestamps
+      # One family per parent account until the family endpoints take a family id.
+      t.index :user_id, unique: true, name: "index_guardianships_one_family_per_user"
       t.index %i[user_id family_id], unique: true
     end
 
