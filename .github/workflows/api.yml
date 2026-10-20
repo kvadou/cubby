@@ -25,8 +25,13 @@ jobs:
       redis:
         image: redis:7-alpine
         ports: ["6380:6379"]
+      # Local SNS/SQS/S3 so the event pipeline spec runs end to end.
+      aws:
+        image: motoserver/moto:5.2.4
+        ports: ["5055:5000"]
     env:
       RAILS_ENV: test
+      EVENTS_AWS_ENDPOINT: http://localhost:5055
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1

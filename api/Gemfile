@@ -27,6 +27,11 @@ gem "redis", "~> 5.4"
 gem "aws-sdk-bedrockruntime", "~> 1.86"
 gem "neighbor", "~> 1.2"
 
+# Events: transactional outbox to SNS, SQS analytics consumer, S3 export
+gem "aws-sdk-sns", "~> 1.122"
+gem "aws-sdk-sqs", "~> 1.120"
+gem "aws-sdk-s3", "~> 1.234"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

@@ -13,6 +13,8 @@ class ProposedAction < ApplicationRecord
   COOLDOWNS = { "stale_waitlist" => 14.days, "past_due_invoice" => 7.days }.freeze
   # Facts go to a language model in phase 4, so contact details never belong in them (D8).
   FORBIDDEN_FACT_KEYS = /email|phone|address/i
+  # The web app's dismiss reasons. Events carry only the category, never the director's note.
+  DISMISS_CATEGORIES = [ "Already handled", "Not accurate", "Family asked us to wait", "Something else" ].freeze
   EMBEDDED_EMAIL = /[\w.+-]+@[\w-]+\.[\w.]+/
 
   class InvalidTransition < StandardError; end
@@ -49,27 +51,38 @@ class ProposedAction < ApplicationRecord
   def family_facing? = FAMILY_FACING.include?(kind)
 
   def approve!(by:, final_body: nil, now: Time.current)
+    body = final_body || draft_body
     transition!(to: "approved", actor: by, now: now,
-                attrs: { final_body: final_body || draft_body, suppressed_until: cooldown_end(now) })
+                attrs: { final_body: body, suppressed_until: cooldown_end(now) },
+                event: { family_facing: family_facing?, message_source: message_source(body), draft_status: draft_status,
+                         draft_cost_micros: draft_cost_micros })
   end
 
   def dismiss!(by:, reason: nil, now: Time.current)
+    category = DISMISS_CATEGORIES.find { |c| reason.to_s.start_with?(c) } || (reason.present? ? "Other" : "None")
     transition!(to: "dismissed", actor: by, note: reason, now: now,
-                attrs: { dismiss_reason: reason, suppressed_until: cooldown_end(now) })
+                attrs: { dismiss_reason: reason, suppressed_until: cooldown_end(now) },
+                event: { reason_category: category })
   end
 
   def resolve!(resolution:, by: "system", now: Time.current)
     raise ArgumentError, "unknown resolution #{resolution}" unless RESOLUTIONS.include?(resolution)
-    transition!(to: "resolved", actor: by, resolution: resolution, now: now, attrs: { resolution: resolution })
+    transition!(to: "resolved", actor: by, resolution: resolution, now: now, attrs: { resolution: resolution },
+                event: { resolution: resolution })
   end
 
   # Snoozing hides the row from the inbox without closing it, so it is not a status change.
   def snooze!(until_time:)
     raise InvalidTransition, "only proposed actions can be snoozed" unless proposed?
-    update!(snoozed_until: until_time)
+
+    self.class.transaction do
+      update!(snoozed_until: until_time)
+      OutboxEvent.record!("action.snoozed", center_id: center_id,
+                          payload: event_payload(snoozed_until: until_time.iso8601))
+    end
   end
 
-  def transition!(to:, actor:, resolution: nil, note: nil, now: Time.current, attrs: {})
+  def transition!(to:, actor:, resolution: nil, note: nil, now: Time.current, attrs: {}, event: {})
     raise InvalidTransition, "unknown status #{to}" unless STATUSES.include?(to)
 
     self.class.transaction do
@@ -80,11 +93,27 @@ class ProposedAction < ApplicationRecord
 
       ProposedActionTransition.create!(proposed_action_id: id, from_status: status, to_status: to,
                                        resolution: resolution, actor: actor, note: note, created_at: now)
+      OutboxEvent.record!("action.#{to}", center_id: center_id, occurred_at: now,
+                          payload: event_payload(decided_at: now.iso8601(6), decided_by_type: actor.to_s.split(":").first,
+                                                 **event))
       reload
     end
   end
 
+  # The fields every action event carries: enough to count and time decisions, nothing personal.
+  def event_payload(**extra)
+    { action_id: id, kind: kind, proposed_at: detected_at.iso8601(6) }.merge(extra)
+  end
+
   private
+
+  # How the approved message came about, for the "drafts used as written" metric.
+  def message_source(body)
+    return "none" unless family_facing?
+    return "starter_or_own" unless draft_status == "ready" && draft_body.present?
+
+    body.to_s.strip == draft_body.strip ? "draft_as_is" : "draft_edited"
+  end
 
   def cooldown_end(now)
     if ratio_risk?

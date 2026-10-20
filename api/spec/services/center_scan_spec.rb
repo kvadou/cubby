@@ -62,7 +62,7 @@ RSpec.describe CenterScan do
     self.use_transactional_tests = false
 
     after do
-      [ ProposedActionTransition, ProposedAction, Invoice, Family, Center ].each(&:delete_all)
+      [ OutboxEvent, ProposedActionTransition, ProposedAction, Invoice, Family, Center ].each(&:delete_all)
     end
 
     it "leaves exactly one open action" do

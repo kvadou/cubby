@@ -22,11 +22,16 @@ services:
       interval: 3s
       retries: 20
 
+  # Local SNS, SQS, and S3 for the event pipeline. Moto needs no account or token.
+  aws:
+    image: motoserver/moto:5.2.4
+    ports: ["5055:5000"]
+
   api: &api
     build:
       context: ./api
       dockerfile: Dockerfile.dev
-    command: bash -c "rm -f tmp/pids/server.pid && bin/rails db:prepare && bin/rails db:seed && bin/rails server -b 0.0.0.0 -p 3000"
+    command: bash -c "rm -f tmp/pids/server.pid && bin/rails db:prepare && bin/rails db:seed && bin/rails events:setup && bin/rails server -b 0.0.0.0 -p 3000"
     # bin/aws-env writes .env.aws with the cubby profile's keys only; without it, AI features report unavailable.
     env_file:
       - path: .env.aws
@@ -35,18 +40,37 @@ services:
       RAILS_ENV: development
       DATABASE_URL: postgres://cubby:cubby@db:5432/cubby_development
       REDIS_URL: redis://redis:6379/0
+      # Events go to the local emulator, never to real AWS, in development.
+      EVENTS_AWS_ENDPOINT: http://aws:5000
     ports: ["3000:3000"]
     volumes: [./api:/app]
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
+      aws: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "ruby -rnet/http -e 'exit Net::HTTP.get_response(URI(\"http://localhost:3000/up\")).is_a?(Net::HTTPSuccess) ? 0 : 1'"]
+      interval: 5s
+      retries: 40
 
   sidekiq:
     <<: *api
     command: bundle exec sidekiq -C config/sidekiq.yml
+    restart: unless-stopped
     ports: []
+    healthcheck: { disable: true }
     depends_on:
       api: { condition: service_started }
+
+  # Analytics consumer: SQS -> domain_events.
+  events:
+    <<: *api
+    command: bundle exec rails events:consume
+    restart: unless-stopped
+    ports: []
+    healthcheck: { disable: true }
+    depends_on:
+      api: { condition: service_healthy }
 
 volumes:
   pgdata:

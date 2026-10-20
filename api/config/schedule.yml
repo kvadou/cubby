@@ -3,3 +3,13 @@ nightly_scan:
   cron: "0 4 * * * America/Chicago"
   class: "NightlyScanJob"
   description: "Detect waitlist, billing and staffing work for every center"
+
+publish_outbox:
+  cron: "* * * * *"
+  class: "PublishOutboxJob"
+  description: "Backstop: publish any outbox events a post-commit kick missed"
+
+export_domain_events:
+  cron: "30 2 * * * America/Chicago"
+  class: "ExportDomainEventsJob"
+  description: "Write yesterday's analytics events to S3 as JSON lines"

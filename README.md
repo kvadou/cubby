@@ -23,8 +23,8 @@ Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go de
 | 2 | Detectors and the idempotent action queue | Done |
 | 3 | Auth, center scoping, React + TypeScript director app | Done |
 | 4 | Bedrock drafting, policy retrieval, agent, evals | Built and tested; live runs waiting on AWS Bedrock access |
-| 5 | Events: SNS to SQS to analytics | Next |
-| 6 | AWS via Terraform, EKS, FluxCD | Planned |
+| 5 | Events: SNS to SQS to analytics | Done |
+| 6 | AWS via Terraform, EKS, FluxCD | Next |
 | 7 | iOS parent app | Planned |
 | 8 | Android parent app | Planned |
 
@@ -33,7 +33,7 @@ The full plan is in [`docs/plans/2026-10-19-cubby-plan.md`](docs/plans/2026-10-1
 ## Run it locally
 
 ```bash
-docker compose up --build          # Postgres (5433), Redis (6380), API (3000), Sidekiq
+docker compose up --build          # Postgres (5433), Redis (6380), API (3000), Sidekiq, Moto (5055), events consumer
 cd web && npm install && npm run dev   # director app on http://localhost:5173
 ```
 
@@ -74,6 +74,24 @@ Every endpoint except sign-in needs a session, and every center endpoint is scop
 | `POST /api/v1/centers/:id/proposed_actions/:id/approve\|dismiss\|snooze` | Decisions; send the `lock_version` you saw, and a stale one returns 409 with the current row |
 
 **Security model.** Cookie-authenticated writes must come from the app's own origin (`Sec-Fetch-Site: same-origin`, or a trusted `Origin` from older browsers), modeled on Rails 8.2's header-based CSRF protection; bearer requests are exempt because browsers never attach them on their own. Sign-in is rate limited per IP and per email across both endpoints. The web app is served from the same origin as the API (Vite proxy locally, CloudFront path routing in AWS), so there is no CORS.
+
+## Events and analytics (phase 5)
+
+Design and evidence: [`docs/prior-art/2026-10-19-phase5-events.md`](docs/prior-art/2026-10-19-phase5-events.md).
+
+```
+approve / dismiss / snooze / scan / draft
+        │ same transaction
+        ▼
+  outbox_events ──PublishOutboxJob──► SNS topic ──raw delivery──► SQS queue (+ DLQ) ──consumer──► domain_events ──► /analytics
+                  (SKIP LOCKED, batches of 10)                                     (dedupe on event_id)    └─► S3 JSON lines, nightly
+```
+
+- **Transactional outbox:** every change to an action writes an event row in the same transaction, so an event exists if and only if the change committed. A post-commit kick publishes it within a second; a one-minute cron job is the backstop.
+- **At-least-once, deduplicated:** the relay marks rows published only after SNS accepts them, and the consumer stores each `event_id` once, so a crash anywhere means a duplicate delivery, never a lost or double-counted event. Unreadable messages go to a dead-letter queue.
+- **No personal data in events:** ids, kinds, timings, decision categories, and AI costs only; the model refuses name, body, note, and contact fields.
+- **Analytics page:** decisions, approval rate, median time to decision, how approved messages were written (Claude's draft as is, edited, or without a draft), AI cost per approved message, decisions per day, and pipeline lag, all from delivered events.
+- **Local AWS:** Moto (SNS, SQS, S3) runs in compose and as a CI service, so the pipeline spec runs end to end on every push. Outside production, events only ever go to an explicit local endpoint.
 
 ## AI (phase 4)
 

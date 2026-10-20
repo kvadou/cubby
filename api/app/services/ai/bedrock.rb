@@ -17,8 +17,7 @@ module Ai
 
     class Error < StandardError; end
 
-    # Failures that mean "the model is unavailable right now", including timeouts and dropped connections.
-    TRANSIENT = [ Aws::Errors::ServiceError, Aws::Errors::MissingCredentialsError, Seahorse::Client::NetworkingError ].freeze
+    TRANSIENT = AWS_TRANSIENT_ERRORS
 
     module_function
 

@@ -99,3 +99,24 @@ export type ProposedAction =
   | (ActionBase & { kind: "ratio_risk"; facts: RatioFacts });
 
 export type ListName = "inbox" | "approved" | "dismissed";
+
+export interface KindStats {
+  kind: Kind;
+  proposed: number;
+  approved: number;
+  dismissed: number;
+  resolved: number;
+  median_hours_to_decision: number | null;
+}
+
+export interface AnalyticsReport {
+  days: number;
+  since: string;
+  totals: { proposed: number; approved: number; dismissed: number; resolved: number; snoozed: number; approval_rate: number | null };
+  by_kind: KindStats[];
+  median_hours_to_decision: number | null;
+  messages: { approved: number; draft_as_is: number; draft_edited: number; starter_or_own: number };
+  ai: { drafts: number; drafts_ready: number; cost_micros: number; cost_per_approved_message_micros: number | null };
+  daily: { date: string; approved: number; dismissed: number }[];
+  pipeline: { waiting_to_publish: number; last_received_at: string | null };
+}

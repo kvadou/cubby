@@ -67,7 +67,16 @@ module Drafting
 
     # Drafts never bump lock_version: a director mid-review must not get a conflict from a background job.
     def write(action, **attrs)
-      ProposedAction.where(id: action.id, status: "proposed").update_quietly(attrs.merge(drafted_at: Time.current))
+      ProposedAction.transaction do
+        written = ProposedAction.where(id: action.id, status: "proposed").update_quietly(attrs.merge(drafted_at: Time.current))
+        next if written.zero?
+
+        OutboxEvent.record!("draft.completed", center_id: action.center_id,
+                            payload: action.event_payload(status: attrs[:draft_status], model: attrs[:draft_model],
+                                                          cost_micros: attrs[:draft_cost_micros].to_i,
+                                                          input_tokens: attrs[:draft_input_tokens].to_i,
+                                                          output_tokens: attrs[:draft_output_tokens].to_i))
+      end
     end
   end
 end

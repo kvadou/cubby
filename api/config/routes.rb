@@ -14,6 +14,7 @@ Rails.application.routes.draw do
         resources :enrollments, only: :index
         resources :invoices, only: :index
         resource :ask, only: :create
+        resource :analytics, only: :show
         resources :proposed_actions, only: :index do
           member do
             post :approve

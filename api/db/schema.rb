@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -61,6 +61,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000003) do
     t.index ["center_id"], name: "index_classrooms_on_center_id"
     t.check_constraint "age_min_months < age_max_months", name: "classroom_age_range"
     t.check_constraint "capacity > 0 AND ratio > 0", name: "classroom_positive_limits"
+  end
+
+  create_table "domain_events", force: :cascade do |t|
+    t.uuid "event_id", null: false
+    t.string "event_type", null: false
+    t.bigint "center_id", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.datetime "occurred_at", null: false
+    t.datetime "received_at", null: false
+    t.index ["center_id", "occurred_at"], name: "index_domain_events_on_center_id_and_occurred_at"
+    t.index ["event_id"], name: "index_domain_events_on_event_id", unique: true
   end
 
   create_table "enrollments", force: :cascade do |t|
@@ -140,6 +151,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000003) do
     t.index ["user_id", "center_id"], name: "index_memberships_on_user_id_and_center_id", unique: true
     t.index ["user_id"], name: "index_memberships_on_user_id"
     t.check_constraint "role::text = 'director'::text", name: "membership_role"
+  end
+
+  create_table "outbox_events", force: :cascade do |t|
+    t.uuid "event_id", default: -> { "gen_random_uuid()" }, null: false
+    t.string "event_type", null: false
+    t.bigint "center_id", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.datetime "occurred_at", null: false
+    t.datetime "published_at"
+    t.integer "attempts", default: 0, null: false
+    t.text "last_error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["center_id"], name: "index_outbox_events_on_center_id"
+    t.index ["event_id"], name: "index_outbox_events_on_event_id", unique: true
+    t.index ["id"], name: "unpublished_outbox_events", where: "(published_at IS NULL)"
   end
 
   create_table "policy_chunks", force: :cascade do |t|
@@ -283,6 +310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000003) do
   add_foreign_key "invoices", "families"
   add_foreign_key "memberships", "centers"
   add_foreign_key "memberships", "users"
+  add_foreign_key "outbox_events", "centers"
   add_foreign_key "policy_chunks", "centers"
   add_foreign_key "policy_chunks", "policy_documents"
   add_foreign_key "policy_documents", "centers"

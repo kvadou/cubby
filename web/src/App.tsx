@@ -5,10 +5,15 @@ import { api } from "./api";
 import { AskPanel } from "./components/AskPanel";
 import { Logo } from "./components/Logo";
 import { useToast } from "./components/Toasts";
+import { Analytics } from "./pages/Analytics";
 import { Queue } from "./pages/Queue";
 import { SignIn } from "./pages/SignIn";
 import { useMe } from "./session";
 import type { ListName, Me } from "./types";
+
+type Page = ListName | "analytics";
+
+const TITLES: Record<Page, string> = { inbox: "Today's queue", approved: "Approved", dismissed: "Dismissed", analytics: "Analytics" };
 
 export function App() {
   return (
@@ -17,12 +22,13 @@ export function App() {
       <Route path="/inbox" element={<Signed list="inbox" />} />
       <Route path="/approved" element={<Signed list="approved" />} />
       <Route path="/dismissed" element={<Signed list="dismissed" />} />
+      <Route path="/analytics" element={<Signed list="analytics" />} />
       <Route path="*" element={<Navigate to="/inbox" replace />} />
     </Routes>
   );
 }
 
-function Signed({ list }: { list: ListName }) {
+function Signed({ list }: { list: Page }) {
   const me = useMe();
   if (me.isPending) return <div className="splash" aria-busy="true"><Logo /></div>;
   if (me.isError) {
@@ -41,7 +47,7 @@ function Signed({ list }: { list: ListName }) {
   return <Shell me={me.data} list={list} />;
 }
 
-function Shell({ me, list }: { me: Me; list: ListName }) {
+function Shell({ me, list }: { me: Me; list: Page }) {
   const client = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
@@ -88,19 +94,22 @@ function Shell({ me, list }: { me: Me; list: ListName }) {
 
       <main className="page">
         <div className="page__head">
-          <h1>{list === "inbox" ? "Today's queue" : list === "approved" ? "Approved" : "Dismissed"}</h1>
+          <h1>{TITLES[list]}</h1>
           <nav className="tabs" aria-label="Lists">
             <NavLink to="/inbox" className="tab">
               Inbox{inbox.data ? <span className="tab__count">{inbox.data.length}</span> : null}
             </NavLink>
             <NavLink to="/approved" className="tab">Approved</NavLink>
             <NavLink to="/dismissed" className="tab">Dismissed</NavLink>
+            <NavLink to="/analytics" className="tab">Analytics</NavLink>
           </nav>
         </div>
-        {center ? (
-          <Queue me={me} center={center} list={list} />
-        ) : (
+        {!center ? (
           <div className="empty"><h2>No center yet</h2><p className="muted">Ask an administrator to add you to a center.</p></div>
+        ) : list === "analytics" ? (
+          <Analytics center={center} />
+        ) : (
+          <Queue me={me} center={center} list={list} />
         )}
       </main>
       {asking && center && <AskPanel center={center} onClose={() => setAsking(false)} />}

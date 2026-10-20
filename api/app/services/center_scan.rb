@@ -76,12 +76,14 @@ class CenterScan
   def insert(rows)
     return 0 if rows.empty?
 
-    result = ProposedAction.insert_all(rows, unique_by: :one_open_action_per_key, returning: %i[id])
-    ids = result.rows.flatten
+    result = ProposedAction.insert_all(rows, unique_by: :one_open_action_per_key, returning: %i[id kind])
+    ids = result.rows.map(&:first)
     if ids.any?
       ProposedActionTransition.insert_all(ids.map { |id|
         { proposed_action_id: id, from_status: nil, to_status: "proposed", actor: "scan", created_at: @now }
       })
+      OutboxEvent.record_all!("action.proposed", center_id: @center.id, occurred_at: @now,
+                              payloads: result.rows.map { |id, kind| { action_id: id, kind: kind, proposed_at: @now.iso8601(6) } })
     end
     ids.size
   end
