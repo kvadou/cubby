@@ -27,6 +27,10 @@ services:
       context: ./api
       dockerfile: Dockerfile.dev
     command: bash -c "rm -f tmp/pids/server.pid && bin/rails db:prepare && bin/rails db:seed && bin/rails server -b 0.0.0.0 -p 3000"
+    # bin/aws-env writes .env.aws with the cubby profile's keys only; without it, AI features report unavailable.
+    env_file:
+      - path: .env.aws
+        required: false
     environment: &api_env
       RAILS_ENV: development
       DATABASE_URL: postgres://cubby:cubby@db:5432/cubby_development

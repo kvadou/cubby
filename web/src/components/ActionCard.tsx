@@ -19,6 +19,8 @@ export function ActionCard({ action, busy, onReview, onDismiss, onSnooze }: Prop
       <div className="card__meta">
         <span className={`badge badge--${action.kind}`}>{KIND_LABEL[action.kind]}</span>
         <span className="muted">Found {timeAgo(action.detected_at)}</span>
+        {action.family_facing && action.draft_status === "ready" && <span className="pill pill--small">Draft ready</span>}
+        {action.family_facing && action.draft_status === "pending" && <span className="pill pill--small pill--quiet">Drafting…</span>}
       </div>
       <h3 id={headingId} className="card__title">{title(action)}</h3>
       <p className="card__rationale">{action.rationale}</p>

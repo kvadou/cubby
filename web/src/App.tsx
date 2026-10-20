@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router";
 import { api } from "./api";
+import { AskPanel } from "./components/AskPanel";
 import { Logo } from "./components/Logo";
 import { useToast } from "./components/Toasts";
 import { Queue } from "./pages/Queue";
@@ -44,6 +46,7 @@ function Shell({ me, list }: { me: Me; list: ListName }) {
   const navigate = useNavigate();
   const toast = useToast();
   const center = me.centers[0];
+  const [asking, setAsking] = useState(false);
   const inbox = useQuery({
     queryKey: ["actions", center?.id, "inbox"],
     queryFn: () => api.actions(center!.id, "inbox"),
@@ -72,6 +75,11 @@ function Shell({ me, list }: { me: Me; list: ListName }) {
             {center && <span className="muted">{center.city}</span>}
           </div>
           <div className="topbar__user">
+            {center && (
+              <button type="button" className="button button--primary button--small" onClick={() => setAsking(true)}>
+                Ask Cubby
+              </button>
+            )}
             <span className="topbar__user-name">{me.user.name}</span>
             <button type="button" className="button button--quiet button--small" onClick={signOut}>Sign out</button>
           </div>
@@ -95,6 +103,7 @@ function Shell({ me, list }: { me: Me; list: ListName }) {
           <div className="empty"><h2>No center yet</h2><p className="muted">Ask an administrator to add you to a center.</p></div>
         )}
       </main>
+      {asking && center && <AskPanel center={center} onClose={() => setAsking(false)} />}
     </div>
   );
 }

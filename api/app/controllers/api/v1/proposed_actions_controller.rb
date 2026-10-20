@@ -79,7 +79,7 @@ module Api
         actions.map do |a|
           a.slice(:id, :kind, :status, :resolution, :rationale, :facts, :occurs_on, :detected_at, :last_seen_at,
                   :snoozed_until, :decided_at, :decided_by, :dismiss_reason, :draft_subject, :draft_body,
-                  :final_body, :lock_version)
+                  :final_body, :lock_version, :draft_status, :draft_citations, :draft_model)
            .merge(subject: { type: a.subject_type, id: a.subject_id }, family_facing: a.family_facing?,
                   decided_by_name: names[a.decided_by])
         end

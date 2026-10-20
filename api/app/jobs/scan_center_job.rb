@@ -9,6 +9,7 @@ class ScanCenterJob
 
     date = as_of ? Date.iso8601(as_of) : center.today
     result = CenterScan.new(center, as_of: date).call
-    Rails.logger.info("scan center=#{center_id} as_of=#{date} #{result.to_h.to_json}")
+    drafts = Drafting::Enqueue.for_center(center)
+    Rails.logger.info("scan center=#{center_id} as_of=#{date} #{result.to_h.to_json} drafts_queued=#{drafts}")
   end
 end

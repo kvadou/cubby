@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../api";
 import { languageName, recipient, shortDay, starterMessage } from "../present";
 import type { ProposedAction } from "../types";
 import { Modal } from "./Modal";
@@ -20,7 +22,8 @@ export function ReviewDialog(props: Props) {
 }
 
 function MessageDialog({ action, directorName, centerName, pending, error, onApprove, onClose }: Props) {
-  const [body, setBody] = useState(() => action.draft_body ?? starterMessage(action, directorName, centerName));
+  const drafted = action.draft_status === "ready" && Boolean(action.draft_body);
+  const [body, setBody] = useState(() => (drafted && action.draft_body) || starterMessage(action, directorName, centerName));
   const lang = action.kind === "ratio_risk" ? null : languageName(action.facts.preferred_language);
   const blank = body.trim() === "";
   const tooLong = body.length > MAX;
@@ -58,11 +61,50 @@ function MessageDialog({ action, directorName, centerName, pending, error, onApp
         />
       </label>
       <div id="message-help" className="field__help">
-        <span>{action.draft_body ? "Draft" : "Starting text"} from Cubby. Edit anything before you approve.{lang ? ` The family prefers ${lang}.` : ""}</span>
+        <span>Edit anything before you approve.{lang ? ` The family prefers ${lang}.` : ""}</span>
         <span className={tooLong ? "danger" : undefined}>{body.length.toLocaleString()} / {MAX.toLocaleString()}</span>
       </div>
+      <DraftSource action={action} />
       {error && <p className="form-error" role="alert">{error}</p>}
     </Modal>
+  );
+}
+
+function DraftSource({ action }: { action: ProposedAction }) {
+  const latest = useQuery({ queryKey: ["eval", "latest"], queryFn: api.latestEval, staleTime: 10 * 60_000 });
+  const run = latest.data;
+
+  let note: string;
+  switch (action.draft_status) {
+    case "ready":
+      note = "Drafted by Claude from this item's facts and the center handbook. Cubby checked the amounts, names, and citations.";
+      break;
+    case "pending":
+      note = "Claude is still drafting this one, so this is Cubby's plain starting text. Reopen in a moment to see the draft.";
+      break;
+    case "failed":
+      note = "Claude's draft didn't pass Cubby's checks, so this is plain starting text built from the facts.";
+      break;
+    default:
+      note = "Plain starting text built from this item's facts.";
+  }
+
+  return (
+    <aside className="draft-source" aria-label="About this draft">
+      <p>{note}</p>
+      {action.draft_status === "ready" && action.draft_citations.length > 0 && (
+        <p>
+          <span className="draft-source__label">Based on</span>{" "}
+          {action.draft_citations.map((c) => c.heading).join(" · ")}
+        </p>
+      )}
+      {run && run.checks_total > 0 && (
+        <p className="muted">
+          Latest draft eval: {run.checks_passed}/{run.checks_total} checks passed
+          {run.judge_score ? `, tone and clarity ${Number(run.judge_score).toFixed(1)}/5` : ""} across {run.cases_total} test cases.
+        </p>
+      )}
+    </aside>
   );
 }
 

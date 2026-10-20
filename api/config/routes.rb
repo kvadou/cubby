@@ -7,11 +7,13 @@ Rails.application.routes.draw do
       resources :tokens, only: :create
       delete "tokens/current", to: "tokens#destroy"
       resource :me, only: :show, controller: "me"
+      get "evals/latest", to: "evals#latest"
 
       resources :centers, only: %i[index show] do
         resources :classrooms, only: :index
         resources :enrollments, only: :index
         resources :invoices, only: :index
+        resource :ask, only: :create
         resources :proposed_actions, only: :index do
           member do
             post :approve

@@ -29,7 +29,12 @@ export function Queue({ me, center, list }: Props) {
   const [dialogError, setDialogError] = useState<string | null>(null);
 
   const key = ["actions", center.id, list] as const;
-  const query = useQuery({ queryKey: key, queryFn: () => api.actions(center.id, list) });
+  const query = useQuery({
+    queryKey: key,
+    queryFn: () => api.actions(center.id, list),
+    // While Claude is drafting, check back so "Drafting…" turns into "Draft ready" on its own.
+    refetchInterval: (q) => (q.state.data?.some((a) => a.draft_status === "pending") ? 5000 : false),
+  });
 
   const decide = useMutation({
     mutationFn: (d: Decision) => {

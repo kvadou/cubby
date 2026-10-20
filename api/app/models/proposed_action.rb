@@ -35,6 +35,12 @@ class ProposedAction < ApplicationRecord
     Digest::SHA256.hexdigest(JSON.generate(facts.deep_stringify_keys.sort.to_h))
   end
 
+  # Background writes (scan refreshes, drafts) must not bump lock_version, or a director mid-review would
+  # get a false conflict. Rails' update_all increments the locking column unless the update sets it.
+  def self.update_quietly(attrs)
+    update_all(attrs.merge(lock_version: Arel.sql("lock_version")))
+  end
+
   # Detectors skip a key while a recently closed row for it is still cooling down.
   def self.suppressed?(dedupe_key, now = Time.current)
     where(dedupe_key: dedupe_key).where.not(status: "proposed").where("suppressed_until > ?", now).exists?

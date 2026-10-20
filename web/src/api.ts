@@ -1,4 +1,4 @@
-import type { Me, ProposedAction, ListName } from "./types";
+import type { AskAnswer, EvalSummary, Me, ProposedAction, ListName } from "./types";
 
 export interface ErrorBody {
   error?: string;
@@ -37,6 +37,10 @@ export const api = {
   signIn: (email_address: string, password: string) =>
     request<Me>("/session", { method: "POST", body: { email_address, password } }),
   signOut: () => request<void>("/session", { method: "DELETE" }),
+
+  latestEval: () => request<EvalSummary | null>("/evals/latest"),
+  ask: (centerId: number, question: string) =>
+    request<AskAnswer>(`/centers/${centerId}/ask`, { method: "POST", body: { question } }),
 
   actions: (centerId: number, list: ListName) =>
     request<ProposedAction[]>(`/centers/${centerId}/proposed_actions?status=${list}`),

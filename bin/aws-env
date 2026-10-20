@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Writes .env.aws (gitignored) with the `cubby` AWS profile's credentials only, so the Docker containers
+# can call Bedrock without mounting ~/.aws. Prints nothing secret. Safe to re-run.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+umask 077
+aws configure export-credentials --profile cubby --format env-no-export > .env.aws.tmp
+echo "AWS_REGION=us-east-1" >> .env.aws.tmp
+mv .env.aws.tmp .env.aws
+echo "Wrote .env.aws for profile cubby. Restart with: docker compose up -d api sidekiq"

@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "vector"
 
   create_table "attendances", force: :cascade do |t|
     t.bigint "child_id", null: false
@@ -82,6 +83,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000001) do
     t.check_constraint "status::text = ANY (ARRAY['waitlisted'::character varying, 'enrolled'::character varying, 'withdrawn'::character varying]::text[])", name: "enrollment_status"
   end
 
+  create_table "eval_runs", force: :cascade do |t|
+    t.string "suite", null: false
+    t.string "mode", null: false
+    t.string "model", null: false
+    t.string "judge_model"
+    t.integer "cases_total", null: false
+    t.integer "checks_passed", null: false
+    t.integer "checks_total", null: false
+    t.decimal "judge_score", precision: 3, scale: 2
+    t.jsonb "results", default: [], null: false
+    t.datetime "created_at", null: false
+    t.index ["suite", "created_at"], name: "index_eval_runs_on_suite_and_created_at"
+    t.check_constraint "mode::text = ANY (ARRAY['recorded'::character varying, 'live'::character varying]::text[])", name: "eval_mode"
+  end
+
   create_table "families", force: :cascade do |t|
     t.bigint "center_id", null: false
     t.string "name", null: false
@@ -126,6 +142,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000001) do
     t.check_constraint "role::text = 'director'::text", name: "membership_role"
   end
 
+  create_table "policy_chunks", force: :cascade do |t|
+    t.bigint "policy_document_id", null: false
+    t.bigint "center_id", null: false
+    t.integer "position", null: false
+    t.string "heading", null: false
+    t.text "body", null: false
+    t.vector "embedding", limit: 1024
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["center_id"], name: "index_policy_chunks_on_center_id"
+    t.index ["embedding"], name: "index_policy_chunks_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["policy_document_id", "position"], name: "index_policy_chunks_on_policy_document_id_and_position", unique: true
+    t.index ["policy_document_id"], name: "index_policy_chunks_on_policy_document_id"
+  end
+
+  create_table "policy_documents", force: :cascade do |t|
+    t.bigint "center_id", null: false
+    t.string "title", null: false
+    t.text "body", null: false
+    t.string "body_digest", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["center_id", "title"], name: "index_policy_documents_on_center_id_and_title", unique: true
+    t.index ["center_id"], name: "index_policy_documents_on_center_id"
+  end
+
   create_table "proposed_action_transitions", force: :cascade do |t|
     t.bigint "proposed_action_id", null: false
     t.string "from_status"
@@ -163,12 +205,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000001) do
     t.integer "lock_version", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "draft_status", default: "none", null: false
+    t.string "draft_model"
+    t.jsonb "draft_citations", default: [], null: false
+    t.jsonb "draft_checks", default: {}, null: false
+    t.text "draft_error"
+    t.integer "draft_input_tokens"
+    t.integer "draft_output_tokens"
+    t.bigint "draft_cost_micros"
+    t.datetime "drafted_at"
     t.index ["center_id", "status"], name: "index_proposed_actions_on_center_id_and_status"
     t.index ["center_id"], name: "index_proposed_actions_on_center_id"
     t.index ["dedupe_key", "suppressed_until"], name: "index_proposed_actions_on_dedupe_key_and_suppressed_until"
     t.index ["dedupe_key"], name: "one_open_action_per_key", unique: true, where: "((status)::text = 'proposed'::text)"
     t.index ["subject_type", "subject_id"], name: "index_proposed_actions_on_subject"
     t.check_constraint "(status::text = 'resolved'::text) = (resolution IS NOT NULL)", name: "resolution_only_when_resolved"
+    t.check_constraint "draft_status::text = ANY (ARRAY['none'::character varying, 'pending'::character varying, 'ready'::character varying, 'failed'::character varying]::text[])", name: "draft_status"
     t.check_constraint "kind::text = ANY (ARRAY['stale_waitlist'::character varying, 'past_due_invoice'::character varying, 'ratio_risk'::character varying]::text[])", name: "proposed_action_kind"
     t.check_constraint "resolution IS NULL OR (resolution::text = ANY (ARRAY['condition_cleared'::character varying, 'superseded'::character varying, 'expired'::character varying]::text[]))", name: "proposed_action_resolution"
     t.check_constraint "status::text = ANY (ARRAY['proposed'::character varying, 'approved'::character varying, 'dismissed'::character varying, 'resolved'::character varying]::text[])", name: "proposed_action_status"
@@ -231,6 +283,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000001) do
   add_foreign_key "invoices", "families"
   add_foreign_key "memberships", "centers"
   add_foreign_key "memberships", "users"
+  add_foreign_key "policy_chunks", "centers"
+  add_foreign_key "policy_chunks", "policy_documents"
+  add_foreign_key "policy_documents", "centers"
   add_foreign_key "proposed_action_transitions", "proposed_actions"
   add_foreign_key "proposed_actions", "centers"
   add_foreign_key "sessions", "users"

@@ -63,6 +63,34 @@ interface ActionBase {
   final_body: string | null;
   lock_version: number;
   family_facing: boolean;
+  draft_status: DraftStatus;
+  draft_citations: { chunk_id: number; heading: string }[];
+  draft_model: string | null;
+}
+
+export type DraftStatus = "none" | "pending" | "ready" | "failed";
+
+export interface EvalSummary {
+  mode: "recorded" | "live";
+  model: string;
+  judge_model: string | null;
+  cases_total: number;
+  checks_passed: number;
+  checks_total: number;
+  judge_score: string | null;
+  created_at: string;
+}
+
+export interface AskStep {
+  tool: string;
+  input: Record<string, unknown>;
+}
+
+export interface AskAnswer {
+  text: string;
+  steps: AskStep[];
+  model: string;
+  cost_micros: number | null;
 }
 
 export type ProposedAction =

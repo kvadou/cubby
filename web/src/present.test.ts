@@ -2,10 +2,10 @@ import { facts, money, snoozeOptions, starterMessage, title, timeAgo } from "./p
 import type { ProposedAction } from "./types";
 
 const base = {
-  id: 1, status: "proposed", resolution: null, rationale: "r", occurs_on: null, detected_at: "", last_seen_at: "",
+  id: 1, status: "proposed" as const, resolution: null, rationale: "r", occurs_on: null, detected_at: "", last_seen_at: "",
   snoozed_until: null, decided_at: null, decided_by_name: null, dismiss_reason: null, draft_body: null,
-  final_body: null, lock_version: 0, family_facing: true,
-} as const;
+  final_body: null, lock_version: 0, family_facing: true, draft_status: "none" as const, draft_citations: [], draft_model: null,
+};
 
 const pastDue: ProposedAction = {
   ...base, kind: "past_due_invoice",
@@ -56,5 +56,14 @@ describe("present", () => {
     const now = new Date("2026-10-19T12:00:00Z");
     expect(timeAgo("2026-10-19T11:58:00Z", now)).toBe("2 min ago");
     expect(timeAgo("2026-10-18T12:00:00Z", now)).toBe("yesterday");
+  });
+});
+
+describe("ask steps", () => {
+  it("labels tool calls in plain language", async () => {
+    const { stepLabel } = await import("./components/AskPanel");
+    expect(stepLabel({ tool: "find_family", input: { name: "Effertz" } })).toBe("Family records: Effertz");
+    expect(stepLabel({ tool: "classroom_staffing", input: {} })).toBe("Staffing today");
+    expect(stepLabel({ tool: "search_policies", input: { query: "late fee" } })).toBe("Handbook: “late fee”");
   });
 });

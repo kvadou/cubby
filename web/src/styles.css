@@ -908,3 +908,91 @@ textarea.field__input {
     padding: 1.5rem;
   }
 }
+
+/* Phase 4: drafts and Ask Cubby */
+.pill--small {
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+}
+
+.pill--quiet {
+  background: #efece4;
+  color: var(--muted);
+}
+
+.draft-source {
+  margin-top: 1rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 10px;
+  background: #f6f4ee;
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.draft-source__label {
+  font-weight: 700;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.suggestions .chip {
+  font-weight: 500;
+}
+
+.answers {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.answer {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.875rem 1rem;
+  display: grid;
+  gap: 0.5rem;
+  background: #fff;
+}
+
+.answer--pending {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.answer__question {
+  font-weight: 650;
+}
+
+.answer__text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.answer__steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.step {
+  padding: 0.0625rem 0.5rem;
+  border-radius: 6px;
+  background: var(--waitlist-soft);
+  color: var(--waitlist);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .topbar__user .button--primary {
+    padding: 0.25rem 0.625rem;
+  }
+}

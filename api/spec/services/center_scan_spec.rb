@@ -15,6 +15,7 @@ RSpec.describe CenterScan do
     expect(second.refreshed).to eq(1)
     expect(ProposedAction.proposed.count).to eq(1)
     expect(ProposedActionTransition.count).to eq(1)
+    expect(ProposedAction.sole.lock_version).to eq(0) # a refresh must not 409 a director mid-review
   end
 
   it "resolves an action when the invoice is paid (O7)" do
