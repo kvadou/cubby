@@ -42,41 +42,69 @@ export function SignIn() {
 
   const offline = demo.error instanceof ApiError && demo.error.status === 503;
 
+  // The public demo has nothing to sign in to, so it offers the two sides of Cubby instead of a form.
+  if (demo.data) {
+    return (
+      <main className="signin">
+        <div className="signin__card signin__card--roles">
+          <Logo />
+          <section className="roles" aria-labelledby="roles-title">
+            <div className="roles__intro">
+              <h1 id="roles-title">Try Cubby</h1>
+              <p className="muted">
+                A daily queue for preschool directors: waitlist families to call, tuition to chase, and rooms that need
+                covering. Pick a side to look around.
+              </p>
+            </div>
+            <div className="roles__grid">
+              <article className="role">
+                <span className="role__kicker">Director</span>
+                <h2>{demo.data.director_name}</h2>
+                <p className="role__where">{demo.data.center_name ?? "A demo center"}</p>
+                <p className="muted">
+                  Work the live queue: approve or edit what Cubby found, and see what happened after.
+                </p>
+                <button
+                  type="button"
+                  className="button button--primary button--block"
+                  disabled={pending !== null}
+                  onClick={() => void enter("demo", api.signInToDemo)}
+                >
+                  {pending === "demo" ? "Opening the inbox…" : "Open the director inbox"}
+                </button>
+              </article>
+              <article className="role">
+                <span className="role__kicker">Parent</span>
+                <h2>The Russel family</h2>
+                <p className="role__where">iPhone and Android</p>
+                <p className="muted">
+                  Check-ins, notes the director approved, and tuition, in the parent apps on the same API.
+                </p>
+                <Link className="button button--quiet button--block" to="/apps">
+                  See the parent apps
+                </Link>
+              </article>
+            </div>
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <p className="demo__note">Everything here is fictional and resets every night.</p>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="signin">
       <div className="signin__card">
         <Logo />
-        {demo.data ? (
-          <section className="demo" aria-labelledby="demo-title">
-            <h1 id="demo-title">Try Cubby</h1>
-            <p className="muted">
-              Cubby is a daily queue for preschool directors: waitlist families to call, tuition to chase, and rooms that
-              need covering. Step in as {demo.data.director_name}, director of {demo.data.center_name ?? "a demo center"}.
-            </p>
-            <button
-              type="button"
-              className="button button--primary button--block"
-              disabled={pending !== null}
-              onClick={() => void enter("demo", api.signInToDemo)}
-            >
-              {pending === "demo" ? "Opening the demo…" : "Try the demo"}
-            </button>
-            <p className="demo__note">Everything here is fictional and resets every night.</p>
-          </section>
-        ) : (
-          <>
-            <h1>Sign in</h1>
-            <p className="muted">Your center's daily queue: who to follow up with, and what needs covering.</p>
-          </>
-        )}
+        <h1>Sign in</h1>
+        <p className="muted">Your center's daily queue: who to follow up with, and what needs covering.</p>
         {offline && (
           <p className="form-error" role="status">
             The demo is offline right now. Try again later.
           </p>
         )}
         {error && <p className="form-error" role="alert">{error}</p>}
-
-        {demo.data && <p className="signin__divider"><span>or sign in</span></p>}
         <form onSubmit={submit} noValidate>
           <label className="field">
             <span className="field__label">Email</span>
@@ -87,7 +115,7 @@ export function SignIn() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              autoFocus={!demo.data}
+              autoFocus
             />
           </label>
           <label className="field">
@@ -102,16 +130,13 @@ export function SignIn() {
             />
           </label>
           <button
-            className={`button button--block ${demo.data ? "button--quiet" : "button--primary"}`}
+            className="button button--primary button--block"
             type="submit"
             disabled={pending !== null || !email || !password}
           >
             {pending === "password" ? "Signing in…" : "Sign in"}
           </button>
         </form>
-        <Link className="signin__apps" to="/apps">
-          See the parent apps for iPhone and Android
-        </Link>
       </div>
     </main>
   );

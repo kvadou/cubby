@@ -239,39 +239,67 @@ a.button--primary {
   margin-top: 0.25rem;
 }
 
-.demo {
+.signin__card--roles {
+  max-width: 720px;
+  gap: 1.25rem;
+}
+
+.roles {
   display: grid;
-  gap: 0.75rem;
+  gap: 1.25rem;
+}
+
+.roles__intro {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.roles__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.role {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.role h2 {
+  font-size: 1.125rem;
+  margin: 0;
+}
+
+.role .muted {
+  flex: 1;
+  margin-bottom: 0.5rem;
+}
+
+.role__kicker {
+  align-self: flex-start;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.role__where {
+  color: var(--muted);
+  font-size: 0.9375rem;
+  margin: 0;
 }
 
 .demo__note {
   font-size: 0.875rem;
   color: var(--muted);
   text-align: center;
-}
-
-.signin__divider {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.signin__divider::before,
-.signin__divider::after {
-  content: "";
-  flex: 1;
-  border-top: 1px solid var(--line);
-}
-
-.signin__apps {
-  color: var(--brand);
-  font-weight: 500;
-  font-size: 0.9375rem;
-  text-align: center;
-  text-underline-offset: 3px;
-  padding: 0.5rem 0;
 }
 
 /* Parent app screenshots */
