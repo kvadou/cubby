@@ -24,7 +24,7 @@ Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go de
 | 3 | Auth, center scoping, React + TypeScript director app | Done |
 | 4 | Bedrock drafting, policy retrieval, agent, evals | Built and tested; live runs waiting on AWS Bedrock access |
 | 5 | Events: SNS to SQS to analytics | Done |
-| 6 | AWS via Terraform, EKS, FluxCD | Next |
+| 6 | AWS via Terraform, EKS, FluxCD | Done; runs on demand |
 | 7 | iOS parent app | Planned |
 | 8 | Android parent app | Planned |
 
@@ -74,6 +74,32 @@ Every endpoint except sign-in needs a session, and every center endpoint is scop
 | `POST /api/v1/centers/:id/proposed_actions/:id/approve\|dismiss\|snooze` | Decisions; send the `lock_version` you saw, and a stale one returns 409 with the current row |
 
 **Security model.** Cookie-authenticated writes must come from the app's own origin (`Sec-Fetch-Site: same-origin`, or a trusted `Origin` from older browsers), modeled on Rails 8.2's header-based CSRF protection; bearer requests are exempt because browsers never attach them on their own. Sign-in is rate limited per IP and per email across both endpoints. The web app is served from the same origin as the API (Vite proxy locally, CloudFront path routing in AWS), so there is no CORS.
+
+## Deploy (phase 6)
+
+The demo runs on AWS on demand: about $5 a day while up, a few cents a month while down. Details and decisions: [`docs/plans/2026-10-19-phase6-plan.md`](docs/plans/2026-10-19-phase6-plan.md), [`docs/prior-art/2026-10-19-phase6-deploy.md`](docs/prior-art/2026-10-19-phase6-deploy.md).
+
+- **Edge:**
+  - CloudFront serves the React build from S3.
+  - It sends `/api/*` through a VPC origin to an internal load balancer. That load balancer has no public address, and only CloudFront can reach it.
+- **Cluster:**
+  - EKS 1.37 on two Graviton nodes, running the API, Sidekiq and the analytics consumer.
+  - Postgres 17 (RDS) and Valkey 8 sit in private subnets.
+  - SNS and SQS policies allow only the worker to publish and only the topic to deliver.
+- **Access:** each workload has its own IAM role through EKS Pod Identity.
+- **Delivery:**
+  - CI builds an arm64 image, pushes it to ECR and commits the new tag to `deploy/production`.
+  - Flux applies it.
+  - The web app goes to S3 with a CloudFront refresh.
+
+```bash
+make bootstrap   # once: Terraform state bucket
+make base        # persistent pieces (registry, site, budget, CI role)
+make up          # cluster, about 25 minutes
+make down        # back to just the site, which says the demo is offline
+```
+
+Each apply shows its plan and asks before changing anything. Everything runs as the `cubby` AWS profile, and the providers refuse any other account. The demo directors' password is generated per cluster: `terraform -chdir=infra/terraform/cluster output -raw demo_password`.
 
 ## Events and analytics (phase 5)
 

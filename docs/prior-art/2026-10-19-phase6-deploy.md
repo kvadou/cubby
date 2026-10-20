@@ -71,11 +71,11 @@ Retrieved 2026-10-19. Research record for the phase 6 build.
 
 | ID | Decision | Invariant | Required authority | Check | Verified authority | Result | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| O1 | D1, D2 | `make up` yields a site where a director signs in, approves, and sees the change | end-to-end | Browser against the CloudFront URL | | | open |
-| O2 | D2 | The ALB and NodePort can't be reached from the internet; only CloudFront can | end-to-end | Direct requests to the ALB name and to a node's public IP | | | open |
-| O3 | D6 | A viewer-supplied `CloudFront-Viewer-Address` does not change the recorded IP | end-to-end | Sign in through CloudFront with a forged header, read the session IP | | | open |
-| O4 | D8, D4 | An approval reaches analytics through real SNS and SQS, and an outside principal can't publish or send | end-to-end | UI approve, then analytics; `aws sns publish` / `aws sqs send-message` as the admin user is denied | | | open |
-| O5 | D5 | CI pushes an image and Flux rolls it out with no manual step | end-to-end | Push to main, watch the Kustomization reconcile the new tag | | | open |
+| O1 | D1, D2 | `make up` yields a site where a director signs in, approves, and sees the change | end-to-end | Live stack through CloudFront | end-to-end | pass (2026-10-19): `/`, `/inbox` 200; `/api/v1/me` 401 signed out; with a bearer token minted in the cluster, `me`, the 10-action inbox, approve 200, a stale retry 409, and analytics showing the approval; the sign-in page browser-checked at 1280 and 375 px with no CSP errors. A browser sign-in with the demo password was left to Doug (public host) | closed |
+| O2 | D2 | The ALB and NodePort can't be reached from the internet; only CloudFront can | end-to-end | Direct requests to the ALB name and to a node's public IP | end-to-end | pass (2026-10-19): the ALB name resolves to 10.40.x private addresses only; both nodes' public IPs time out on 30080 | closed |
+| O3 | D6 | A viewer-supplied `CloudFront-Viewer-Address` does not change the recorded IP | end-to-end | Login attempt (fictional account) with a forged header; read the rate-limit keys in Valkey | end-to-end | pass (2026-10-19): forged `1.2.3.4:1`; the limiter keyed on the real viewer address, so CloudFront overwrites the header | closed |
+| O4 | D8, D4 | An approval reaches analytics through real SNS and SQS, and an outside principal can't publish or send | end-to-end | API approve, then analytics; `aws sns publish` / `aws sqs send-message` as the admin user | end-to-end | pass (2026-10-19): the approval appeared in analytics within 20 s; the scan's proposed events arrived first; admin publish returned AuthorizationError and send returned AccessDenied | closed |
+| O5 | D5 | CI pushes an image and Flux rolls it out with no manual step | end-to-end | Push to main, watch the Kustomization | end-to-end | pass (2026-10-19): the image job pushed `06a3568`, committed `32e4a2b`, and Flux applied that revision; all three pods ran the new tag. First attempt failed on the OIDC trust (the repo uses GitHub's immutable subject `repo:kvadou@15655389/cubby@1426276158`), fixed in `01c50fd` | closed |
 | O6 | D1, D3 | `make down` leaves only the base stack | end-to-end | `terraform state list` for the cluster is empty; no EKS, RDS, ElastiCache, ALB left | | | open |
 | O7 | D2 | The site says the demo is offline while the cluster is down | end-to-end | Browser at the CloudFront URL after `make down` | | | open |
 
@@ -96,4 +96,17 @@ Retrieved 2026-10-19. Research record for the phase 6 build.
 - The EKS API endpoint is public (IAM-authenticated) so Terraform and kubectl run from a laptop.
 - Not done: password change and sign out everywhere. The demo directors are shared accounts, so a visitor changing the password would lock everyone else out. Both are required before any real user.
 - Not done: an alarm on outbox rows stuck unpublished, which needs an app metric. The analytics page shows the backlog, and the queue-age alarm covers a stopped consumer.
+- Independent security review (2026-10-19), no HIGH in the code. Fixed:
+  - Plan files are now gitignored. The one created was deleted after apply and never committed.
+  - The per-email login limit is keyed on email plus IP, so one address can't lock out the shared demo directors. A 50-per-hour backstop per account remains.
+  - Ask Cubby has daily ceilings, 100 per user and 300 overall, as a Bedrock spend cap.
+  - The API sends security headers and a CSP.
+  - Image pushes are idempotent for the immutable tags.
+  - The third-party AWS actions are pinned to commit SHAs.
+- Accepted:
+  - The EKS endpoint is public: IAM-gated, and the operator's IP changes.
+  - Pods or nodes inside the VPC could forge the viewer header.
+  - No customer KMS key for Kubernetes secrets.
+  - A sustained attacker (50 a hour) can still lock one account out. That's the tradeoff of having any per-account limit.
+  - IPv6 viewers aren't grouped by /64 for rate limits.
 - Review triggers: a custom domain, a second environment, real users, Bedrock access restored, or a node group above two nodes.

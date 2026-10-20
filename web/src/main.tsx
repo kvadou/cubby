@@ -16,8 +16,9 @@ const client: QueryClient = new QueryClient({
   }),
   defaultOptions: {
     queries: {
-      // A 4xx will not fix itself on retry.
-      retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2,
+      // A 4xx will not fix itself on retry, and neither will the deployed demo being switched off.
+      retry: (count, err) =>
+        !(err instanceof ApiError && (err.status < 500 || err.body.error === "offline")) && count < 2,
       refetchOnWindowFocus: true,
     },
   },
