@@ -18,9 +18,15 @@ jobs:
           terraform_version: 1.16.6
       - run: terraform fmt -check -recursive infra/terraform
       - run: |
-          for stack in base cluster; do
+          for stack in base cluster demo; do
             terraform -chdir=infra/terraform/$stack init -backend=false -input=false
             terraform -chdir=infra/terraform/$stack validate
           done
+      - name: Demo host scripts parse
+        working-directory: infra/terraform/demo/host
+        # The env files are written on the host at boot; empty ones let compose check the rest.
+        run: bash -n deploy.sh && touch app.env db.env && docker compose config -q
+        env:
+          CUBBY_IMAGE: example/cubby-api:ci
       - name: Render the Flux manifests
         run: kubectl kustomize deploy/production > /dev/null

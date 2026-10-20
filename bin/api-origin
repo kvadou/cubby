@@ -1,0 +1,18 @@
+#!/bin/bash
+# Prints the base stack's api_origin tfvars: the EKS cluster's load balancer while the cluster is up,
+# otherwise the always-on demo host, otherwise null (CloudFront answers /api/* with "offline").
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+origin_of() {
+  terraform -chdir="infra/terraform/$1" output -json api_origin 2>/dev/null | grep -q vpc_origin_id || return 1
+  terraform -chdir="infra/terraform/$1" output -json api_origin
+}
+
+if [[ "${1:-}" != "--without-cluster" ]] && origin=$(origin_of cluster); then
+  echo "{\"api_origin\": $origin}"
+elif origin=$(origin_of demo); then
+  echo "{\"api_origin\": $origin}"
+else
+  echo '{"api_origin": null}'
+fi

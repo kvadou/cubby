@@ -1,0 +1,89 @@
+#!/bin/bash
+# First boot of the demo host (infra/terraform/demo/host.tf). Terraform fills in the $${...} values;
+# secrets come from Parameter Store at boot, never from this script. No `set -x`: it would print them
+# to the boot log and the serial console.
+set -euo pipefail
+
+# 2 GB of swap: the whole stack fits in the t4g.small's 2 GB, but a deploy briefly runs two images.
+if [ ! -f /swapfile ]; then
+  dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+dnf install -y docker
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -fsSL -o /tmp/docker-compose "${compose_url}"
+echo "${compose_sha}  /tmp/docker-compose" | sha256sum -c -
+install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+mkdir -p /etc/docker
+echo '{"log-driver": "json-file", "log-opts": {"max-size": "10m", "max-file": "3"}}' > /etc/docker/daemon.json
+systemctl enable --now docker
+
+install -d -m 0700 /opt/cubby
+cat > /opt/cubby/compose.yaml <<'YAML'
+${compose}
+YAML
+cat > /opt/cubby/deploy.sh <<'SH'
+${deploy}
+SH
+chmod 0755 /opt/cubby/deploy.sh
+
+params=$(aws ssm get-parameters-by-path --region us-east-1 --path "${param_path}" --with-decryption \
+  --query 'Parameters[].[Name,Value]' --output text)
+param() { awk -v name="${param_path}/$1" '$1 == name { print $2 }' <<< "$params"; }
+for name in SECRET_KEY_BASE DEMO_PASSWORD DB_PASSWORD; do
+  grep -q "^${param_path}/$name[[:space:]]" <<< "$params" || { echo "Missing parameter $name" >&2; exit 1; }
+done
+
+umask 077
+cat > /opt/cubby/db.env <<ENV
+POSTGRES_PASSWORD=$(param DB_PASSWORD)
+ENV
+cat > /opt/cubby/app.env <<ENV
+RAILS_ENV=production
+RAILS_MAX_THREADS=3
+AWS_REGION=us-east-1
+APP_ORIGINS=${app_origins}
+CUBBY_TRUST_VIEWER_ADDRESS=1
+CUBBY_DEMO=1
+EVENTS_TOPIC_ARN=${topic_arn}
+EVENTS_QUEUE_NAME=${queue_name}
+EVENTS_BUCKET=${events_bucket}
+DATABASE_URL=postgres://cubby:$(param DB_PASSWORD)@db:5432/cubby
+REDIS_URL=redis://cache:6379/0
+SECRET_KEY_BASE=$(param SECRET_KEY_BASE)
+DEMO_PASSWORD=$(param DEMO_PASSWORD)
+ENV
+echo "REGISTRY=${registry}" > /opt/cubby/host.env
+umask 022
+
+cat > /etc/systemd/system/cubby-deploy.service <<'UNIT'
+[Unit]
+Description=Deploy the Cubby image named on main
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/cubby/host.env
+ExecStart=/opt/cubby/deploy.sh
+TimeoutStartSec=15min
+UNIT
+cat > /etc/systemd/system/cubby-deploy.timer <<'UNIT'
+[Unit]
+Description=Check for a new Cubby image every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now cubby-deploy.timer
+systemctl start cubby-deploy.service
