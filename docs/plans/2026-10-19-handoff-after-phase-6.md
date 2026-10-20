@@ -25,6 +25,7 @@
 - `make up` takes about 25 minutes and costs about $5 a day while up. Then:
   - Read the demo password: `terraform -chdir=infra/terraform/cluster output -raw demo_password`.
   - Sign in at the site as `renee@littleoaks.test`.
+- `bin/verify-deploy.sh up` after `make up`, and `bin/verify-deploy.sh down` after `make down`, re-run the live checks (O1 to O7). The `up` mode hasn't run as a script yet; its checks passed by hand on 2026-10-19.
 - `make down` leaves only the base stack. The site then says the demo is offline.
 - Optional alert email: put `alert_email = "you@example.com"` in `infra/terraform/base/terraform.tfvars` (gitignored), run `make base`, then confirm the email AWS sends. Until then, budget and alarm notices go to an SNS topic with no subscriber.
 
