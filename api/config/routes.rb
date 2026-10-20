@@ -6,6 +6,7 @@ Rails.application.routes.draw do
       resource :session, only: %i[create destroy]
       resources :tokens, only: :create
       delete "tokens/current", to: "tokens#destroy"
+      resource :demo_session, only: %i[show create]
       resource :me, only: :show, controller: "me"
       get "evals/latest", to: "evals#latest"
 

@@ -18,10 +18,14 @@ class ViewerAddress
     @app.call(env)
   end
 
-  # "198.51.100.10:46532" or "2001:db8::1:46532"; the port is always last.
+  # "198.51.100.10:46532" or "2001:db8::1:46532"; the port is always last. An IPv6 viewer gets its
+  # whole /64, so rotating addresses inside one allocation doesn't escape per-address rate limits.
   def self.parse(value)
     host = value.to_s.rpartition(":").first
-    host.empty? ? nil : IPAddr.new(host).to_s
+    return nil if host.empty?
+
+    address = IPAddr.new(host)
+    (address.ipv6? ? address.mask(64) : address).to_s
   rescue IPAddr::Error, ArgumentError
     nil
   end

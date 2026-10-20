@@ -34,6 +34,23 @@ RSpec.describe "Ask Cubby", type: :request do
     expect(json["error"]).to eq("ai_unavailable")
   end
 
+  it "limits each signed-in visitor separately, so one can't use up a shared demo account" do
+    Rails.cache.clear
+    client.stub_responses(:converse, text_response("Sure."))
+    director = director_of(center)
+    sign_in(director)
+    20.times { ask("Anything?") }
+    ask("Anything?")
+    expect(response).to have_http_status(:too_many_requests)
+
+    # Another visitor on the same account (a new session from another address) can still ask.
+    reset!
+    sign_in(director)
+    post "/api/v1/centers/#{center.id}/ask", params: { question: "Anything?" },
+                                             headers: same_origin.merge("REMOTE_ADDR" => "203.0.113.9"), as: :json
+    expect(response).to have_http_status(:ok)
+  end
+
   it "404s for another center" do
     ask("Anything?", create(:center))
     expect(response).to have_http_status(:not_found)

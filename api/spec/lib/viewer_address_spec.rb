@@ -4,7 +4,8 @@ require Rails.root.join("lib/middleware/viewer_address")
 RSpec.describe ViewerAddress do
   it "reads IPv4 and IPv6 viewer addresses without the port" do
     expect(described_class.parse("198.51.100.10:46532")).to eq("198.51.100.10")
-    expect(described_class.parse("2001:db8::1:46532")).to eq("2001:db8::1")
+    expect(described_class.parse("2001:db8::1:46532")).to eq("2001:db8::")
+    expect(described_class.parse("2001:db8:0:1::1:46532")).to eq("2001:db8:0:1::")
   end
 
   it "ignores missing or malformed values" do

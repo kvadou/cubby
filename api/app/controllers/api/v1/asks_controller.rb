@@ -3,8 +3,12 @@ module Api
     class AsksController < BaseController
       MAX_QUESTION = 500
 
-      rate_limit to: 20, within: 10.minutes, only: :create, by: -> { Current.user.id }, scope: "ask",
+      # Per signed-in device and per address first: demo visitors share one account, so one visitor
+      # shouldn't use up the account's allowance for everyone else.
+      rate_limit to: 20, within: 10.minutes, only: :create, by: -> { Current.session.id }, scope: "ask",
                  with: -> { render json: { error: "rate_limited", message: "That's a lot of questions. Try again in a few minutes." }, status: :too_many_requests }
+      rate_limit to: 25, within: 1.day, only: :create, scope: "ask", name: "ip-daily",
+                 with: -> { render json: { error: "rate_limited", message: "That's today's limit from this network. Try again tomorrow." }, status: :too_many_requests }
       # Daily ceilings on Bedrock spend: per user, and for everyone together (the demo logins are shared).
       rate_limit to: 100, within: 1.day, only: :create, by: -> { Current.user.id }, scope: "ask", name: "user-daily",
                  with: -> { render json: { error: "rate_limited", message: "That's today's limit for your account. Try again tomorrow." }, status: :too_many_requests }

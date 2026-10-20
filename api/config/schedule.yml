@@ -13,3 +13,8 @@ export_domain_events:
   cron: "30 2 * * * America/Chicago"
   class: "ExportDomainEventsJob"
   description: "Write yesterday's analytics events to S3 as JSON lines"
+
+demo_reset:
+  cron: "30 3 * * * America/Chicago"
+  class: "DemoResetJob"
+  description: "Demo deployments only: rebuild the fictional data so each day starts fresh"
