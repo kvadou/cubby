@@ -62,11 +62,11 @@ jobs:
       IMAGE: 731956852586.dkr.ecr.us-east-1.amazonaws.com/cubby-api:${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: arn:aws:iam::731956852586:role/cubby-github-deploy
           aws-region: us-east-1
-      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
       # Tags are immutable, so a re-run for the same commit reuses the image already pushed.
       - name: Build and push
         run: |
