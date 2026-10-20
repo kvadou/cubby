@@ -7,6 +7,7 @@ Rails.application.routes.draw do
         resources :classrooms, only: :index
         resources :enrollments, only: :index
         resources :invoices, only: :index
+        resources :proposed_actions, only: :index
       end
     end
   end

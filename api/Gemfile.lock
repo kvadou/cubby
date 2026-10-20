@@ -350,7 +350,7 @@ DEPENDENCIES
   rubocop-rails-omakase
   shoulda-matchers (~> 6.0)
   sidekiq (~> 8.0)
-  sidekiq-cron (~> 2.3)
+  sidekiq-cron (~> 2.4)
   tzinfo-data
 
 CHECKSUMS

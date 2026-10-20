@@ -1,0 +1,5 @@
+# sidekiq-cron jobs, loaded by config/initializers/sidekiq.rb in the Sidekiq server process.
+nightly_scan:
+  cron: "0 4 * * * America/Chicago"
+  class: "NightlyScanJob"
+  description: "Detect waitlist, billing and staffing work for every center"

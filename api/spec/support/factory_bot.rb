@@ -1,1 +1,4 @@
-RSpec.configure { |config| config.include FactoryBot::Syntax::Methods }
+RSpec.configure do |config|
+  config.include FactoryBot::Syntax::Methods
+  config.include ActiveSupport::Testing::TimeHelpers
+end

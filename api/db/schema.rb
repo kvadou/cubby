@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_19_000008) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_20_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -114,6 +114,54 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_19_000008) do
     t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'paid'::character varying, 'void'::character varying]::text[])", name: "invoice_status"
   end
 
+  create_table "proposed_action_transitions", force: :cascade do |t|
+    t.bigint "proposed_action_id", null: false
+    t.string "from_status"
+    t.string "to_status", null: false
+    t.string "resolution"
+    t.string "actor", null: false
+    t.text "note"
+    t.datetime "created_at", null: false
+    t.index ["proposed_action_id"], name: "index_proposed_action_transitions_on_proposed_action_id"
+  end
+
+  create_table "proposed_actions", force: :cascade do |t|
+    t.bigint "center_id", null: false
+    t.string "kind", null: false
+    t.string "subject_type", null: false
+    t.bigint "subject_id", null: false
+    t.string "dedupe_key", null: false
+    t.string "status", default: "proposed", null: false
+    t.string "resolution"
+    t.text "rationale", null: false
+    t.jsonb "facts", default: {}, null: false
+    t.string "facts_digest", null: false
+    t.integer "detector_version", null: false
+    t.date "occurs_on"
+    t.datetime "detected_at", null: false
+    t.datetime "last_seen_at", null: false
+    t.datetime "snoozed_until"
+    t.datetime "suppressed_until"
+    t.datetime "decided_at"
+    t.string "decided_by"
+    t.text "dismiss_reason"
+    t.string "draft_subject"
+    t.text "draft_body"
+    t.text "final_body"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["center_id", "status"], name: "index_proposed_actions_on_center_id_and_status"
+    t.index ["center_id"], name: "index_proposed_actions_on_center_id"
+    t.index ["dedupe_key", "suppressed_until"], name: "index_proposed_actions_on_dedupe_key_and_suppressed_until"
+    t.index ["dedupe_key"], name: "one_open_action_per_key", unique: true, where: "((status)::text = 'proposed'::text)"
+    t.index ["subject_type", "subject_id"], name: "index_proposed_actions_on_subject"
+    t.check_constraint "(status::text = 'resolved'::text) = (resolution IS NOT NULL)", name: "resolution_only_when_resolved"
+    t.check_constraint "kind::text = ANY (ARRAY['stale_waitlist'::character varying, 'past_due_invoice'::character varying, 'ratio_risk'::character varying]::text[])", name: "proposed_action_kind"
+    t.check_constraint "resolution IS NULL OR (resolution::text = ANY (ARRAY['condition_cleared'::character varying, 'superseded'::character varying, 'expired'::character varying]::text[]))", name: "proposed_action_resolution"
+    t.check_constraint "status::text = ANY (ARRAY['proposed'::character varying, 'approved'::character varying, 'dismissed'::character varying, 'resolved'::character varying]::text[])", name: "proposed_action_status"
+  end
+
   create_table "staff_members", force: :cascade do |t|
     t.bigint "center_id", null: false
     t.string "name", null: false
@@ -145,6 +193,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_19_000008) do
   add_foreign_key "enrollments", "classrooms"
   add_foreign_key "families", "centers"
   add_foreign_key "invoices", "families"
+  add_foreign_key "proposed_action_transitions", "proposed_actions"
+  add_foreign_key "proposed_actions", "centers"
   add_foreign_key "staff_members", "centers"
   add_foreign_key "staff_shifts", "classrooms"
   add_foreign_key "staff_shifts", "staff_members"

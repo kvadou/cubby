@@ -20,8 +20,8 @@ Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go de
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Rails API, Sidekiq, Postgres, Redis, schema, seed data, RSpec, CI | Done |
-| 2 | Detectors and the idempotent action queue | Next |
-| 3 | React + TypeScript director app | Planned |
+| 2 | Detectors and the idempotent action queue | Done |
+| 3 | Auth, center scoping, React + TypeScript director app | Next |
 | 4 | Bedrock drafting, policy retrieval, agent, evals | Planned |
 | 5 | Events: SNS to SQS to analytics | Planned |
 | 6 | AWS via Terraform, EKS, FluxCD | Planned |
@@ -58,7 +58,22 @@ Unauthenticated on purpose while it only runs locally against fictional seed dat
 | `GET /api/v1/centers/:id/enrollments?status=waitlisted` | Enrollments with child age and days on the waitlist |
 | `GET /api/v1/centers/:id/invoices?status=past_due` | Invoices with days past due |
 
+## How the action queue works (phase 2)
+
+Design decisions and their evidence are in [`docs/prior-art/2026-10-19-phase2-action-queue.md`](docs/prior-art/2026-10-19-phase2-action-queue.md).
+
+- **Detectors** (plain Ruby, `api/app/services/detectors/`) return candidates with a minimal facts snapshot:
+  - `StaleWaitlist`: an age-appropriate room has an open seat (age at the requested start date), the family has gone 14+ days without contact, and the start date is within 60 days.
+  - `PastDueInvoice`: one action per family covering every open invoice due before today in the center's time zone.
+  - `RatioRisk`: next weekday, teaching staff scheduled vs. children scheduled, using the stricter of the room ratio and the Minnesota ratio for the youngest child (Minn. R. 9503.0040), plus the Minnesota group size limit. Directors don't count toward ratio.
+- **`CenterScan`** reconciles the queue: inserts new conditions, refreshes unchanged ones, supersedes changed ones, resolves cleared ones, and skips keys still cooling down after a dismissal or approval. A per-center advisory lock serializes scans; a partial unique index (`one open action per dedupe_key`) with `insert_all(unique_by:)` is the backstop.
+- **Transitions** (`proposed -> approved | dismissed | resolved`) go through one guarded UPDATE with `lock_version`, writing an append-only history row in the same transaction. Closed actions are never reopened.
+- **Sidekiq**: `NightlyScanJob` runs at 4:00 AM Central via sidekiq-cron and fans out one `ScanCenterJob` per center. `bin/rails cubby:scan` runs a scan inline.
+
+`GET /api/v1/centers/:id/proposed_actions` lists the inbox (hides snoozed and closed actions; `?status=` and `?kind=` filter).
+
 ## Data rules enforced in the database, not just the model
 
 - One active enrollment per child (partial unique index).
+- One open action per dedupe key (partial unique index); a resolution only on resolved actions.
 - An enrolled child must have a classroom; a paid invoice must have a paid date; classroom age ranges must be ordered (check constraints).

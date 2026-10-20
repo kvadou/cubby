@@ -52,6 +52,18 @@ RSpec.describe "API v1", type: :request do
     expect(json).to be_empty
   end
 
+  it "lists the inbox, hiding snoozed and closed actions and other centers' actions" do
+    open_action = create(:proposed_action, center: center)
+    create(:proposed_action, center: center).snooze!(until_time: 1.day.from_now)
+    create(:proposed_action, center: center).dismiss!(by: "renee")
+    create(:proposed_action, center: create(:center, name: "Other"))
+
+    get "/api/v1/centers/#{center.id}/proposed_actions"
+
+    expect(json.map { |a| a["id"] }).to eq([ open_action.id ])
+    expect(json.first).to include("kind" => "past_due_invoice", "facts" => include("guardian_first_name" => "Jordan"))
+  end
+
   it "returns 404 for an unknown center" do
     get "/api/v1/centers/0"
     expect(response).to have_http_status(:not_found)
