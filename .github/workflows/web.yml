@@ -49,7 +49,9 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::731956852586:role/cubby-github-deploy
           aws-region: us-east-1
-      # Hashed assets cache for a year; index.html is revalidated so a deploy shows up right away.
-      - run: aws s3 sync dist s3://cubby-web-731956852586 --delete --exclude index.html --cache-control "public, max-age=31536000, immutable"
+      # Hashed assets cache for a year; index.html is revalidated so a deploy shows up right away. The app
+      # screenshots keep their names when retaken, so they cache for a day instead.
+      - run: aws s3 sync dist s3://cubby-web-731956852586 --delete --exclude index.html --exclude "apps/*" --cache-control "public, max-age=31536000, immutable"
+      - run: aws s3 sync dist/apps s3://cubby-web-731956852586/apps --delete --cache-control "public, max-age=86400"
       - run: aws s3 cp dist/index.html s3://cubby-web-731956852586/index.html --cache-control "no-cache"
-      - run: aws cloudfront create-invalidation --distribution-id E4J9OMSY7N4SK --paths "/index.html" "/"
+      - run: aws cloudfront create-invalidation --distribution-id E4J9OMSY7N4SK --paths "/index.html" "/" "/apps/*"

@@ -121,3 +121,10 @@ export interface AnalyticsReport {
   daily: { date: string; approved: number; dismissed: number }[];
   pipeline: { waiting_to_publish: number; last_received_at: string | null };
 }
+
+// Present only on a demo deployment (and locally); elsewhere the endpoint is a 404.
+export interface DemoInfo {
+  available: true;
+  director_name: string;
+  center_name: string | null;
+}

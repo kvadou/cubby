@@ -151,6 +151,15 @@ textarea {
   background: #8c1f27;
 }
 
+a.button {
+  text-decoration: none;
+  color: var(--ink);
+}
+
+a.button--primary {
+  color: #fff;
+}
+
 .button--link {
   background: none;
   border: none;
@@ -228,6 +237,125 @@ textarea {
   display: grid;
   gap: 1rem;
   margin-top: 0.25rem;
+}
+
+.demo {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.demo__note {
+  font-size: 0.875rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.signin__divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.signin__divider::before,
+.signin__divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.signin__apps {
+  color: var(--brand);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  text-align: center;
+  text-underline-offset: 3px;
+  padding: 0.5rem 0;
+}
+
+/* Parent app screenshots */
+.apps {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+  display: grid;
+  gap: 2rem;
+}
+
+.apps__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.apps__intro {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 680px;
+}
+
+.apps__platform {
+  display: grid;
+  gap: 1rem;
+}
+
+.apps__platform-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+
+.apps__platform-head h2 {
+  font-size: 1.25rem;
+}
+
+.apps__screens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.apps__screen {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.apps__screen img {
+  width: 100%;
+  height: auto;
+  border-radius: 28px;
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow);
+  background: var(--surface);
+}
+
+.apps__screen figcaption {
+  display: grid;
+  gap: 0.125rem;
+  font-size: 0.9375rem;
+}
+
+@media (max-width: 720px) {
+  /* Swipe through one screen at a time instead of three tiny ones. */
+  .apps__screens {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 78%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 0.5rem;
+  }
+
+  .apps__screens > li {
+    scroll-snap-align: start;
+  }
 }
 
 /* Fields */

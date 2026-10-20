@@ -1,4 +1,4 @@
-import type { AnalyticsReport, AskAnswer, EvalSummary, Me, ProposedAction, ListName } from "./types";
+import type { AnalyticsReport, AskAnswer, DemoInfo, EvalSummary, Me, ProposedAction, ListName } from "./types";
 
 export interface ErrorBody {
   error?: string;
@@ -37,6 +37,8 @@ export const api = {
   signIn: (email_address: string, password: string) =>
     request<Me>("/session", { method: "POST", body: { email_address, password } }),
   signOut: () => request<void>("/session", { method: "DELETE" }),
+  demo: () => request<DemoInfo>("/demo_session"),
+  signInToDemo: () => request<Me>("/demo_session", { method: "POST" }),
 
   analytics: (centerId: number, days: number) => request<AnalyticsReport>(`/centers/${centerId}/analytics?days=${days}`),
   latestEval: () => request<EvalSummary | null>("/evals/latest"),

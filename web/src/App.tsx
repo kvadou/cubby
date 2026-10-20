@@ -6,6 +6,7 @@ import { AskPanel } from "./components/AskPanel";
 import { Logo } from "./components/Logo";
 import { useToast } from "./components/Toasts";
 import { Analytics } from "./pages/Analytics";
+import { Apps } from "./pages/Apps";
 import { Queue } from "./pages/Queue";
 import { SignIn } from "./pages/SignIn";
 import { useMe } from "./session";
@@ -19,6 +20,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/sign-in" element={<SignIn />} />
+      <Route path="/apps" element={<Apps />} />
       <Route path="/inbox" element={<Signed list="inbox" />} />
       <Route path="/approved" element={<Signed list="approved" />} />
       <Route path="/dismissed" element={<Signed list="dismissed" />} />
