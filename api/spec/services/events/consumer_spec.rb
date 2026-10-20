@@ -47,4 +47,19 @@ RSpec.describe Events::Consumer do
     expect(described_class.poll_once(wait: 0)).to eq(1)
     expect(deleted).to eq(%w[m2])
   end
+
+  it "never lets a malformed message take good ones down with it" do
+    base = JSON.parse(good)
+    bad = [
+      base.merge("event_id" => "not-a-uuid"),
+      base.merge("event_id" => SecureRandom.uuid, "data" => "x"),
+      base.merge("event_id" => SecureRandom.uuid, "center_id" => 2**70),
+      base.merge("event_id" => SecureRandom.uuid, "occurred_at" => "yesterday")
+    ].map(&:to_json)
+    deliver(*bad, good)
+
+    expect(described_class.poll_once(wait: 0)).to eq(1)
+    expect(DomainEvent.sole.event_id).to eq(event_id)
+    expect(deleted).to eq(%w[m4])
+  end
 end

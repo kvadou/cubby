@@ -32,16 +32,27 @@ RSpec.describe Events::Publisher do
     expect(OutboxEvent.unpublished.count).to eq(0)
   end
 
-  it "leaves rejected entries unpublished and counts the attempt" do
+  it "leaves rejected entries unpublished and counts the caller's own faults" do
     record(2)
     sns.stub_responses(:publish_batch, ->(ctx) {
       first, second = ctx.params[:publish_batch_request_entries]
-      { successful: [ { id: first[:id], message_id: "m" } ], failed: [ { id: second[:id], code: "Throttled", sender_fault: false, message: "slow down" } ] }
+      { successful: [ { id: first[:id], message_id: "m" } ], failed: [ { id: second[:id], code: "InvalidParameter", sender_fault: true, message: "bad entry" } ] }
     })
 
     described_class.publish_batch
     failed = OutboxEvent.unpublished.sole
-    expect(failed).to have_attributes(attempts: 1, last_error: "Throttled: slow down")
+    expect(failed).to have_attributes(attempts: 1, last_error: "InvalidParameter: bad entry")
+  end
+
+  it "stops when a batch makes no progress, and doesn't count throttling toward the cap" do
+    record(1)
+    sns.stub_responses(:publish_batch, ->(ctx) {
+      { successful: [], failed: [ { id: ctx.params[:publish_batch_request_entries].first[:id], code: "Throttled", sender_fault: false, message: "slow down" } ] }
+    })
+
+    expect(described_class.call).to eq(0)
+    expect(sns.api_requests.count { |r| r[:operation_name] == :publish_batch }).to eq(1)
+    expect(OutboxEvent.sole).to have_attributes(attempts: 0, last_error: "Throttled: slow down")
   end
 
   it "keeps everything for the next run when SNS is unreachable" do

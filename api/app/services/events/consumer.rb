@@ -10,30 +10,53 @@ module Events
                                             wait_time_seconds: wait).messages
       return 0 if messages.empty?
 
-      rows, done = [], []
-      messages.each do |m|
+      parsed = messages.filter_map do |m|
         row = parse(m.body)
-        next Rails.logger.warn("analytics: unreadable message #{m.message_id}") unless row
-
-        rows << row
-        done << m
+        Rails.logger.warn("analytics: unreadable message #{m.message_id}") unless row
+        [ m, row ] if row
       end
-      DomainEvent.insert_all(rows, unique_by: :event_id) if rows.any?
+      done = store(parsed)
       done.each_slice(10) do |slice|
         Events.sqs.delete_message_batch(queue_url: Events.queue_url,
                                         entries: slice.map { |m| { id: m.message_id, receipt_handle: m.receipt_handle } })
       end
-      rows.size
+      done.size
     end
 
+    UUID = /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/
+    MAX_ID = (2**63) - 1
+
+    # Returns a row, or nil for anything malformed. Never raises: one bad message must not take the
+    # rest of its batch down with it.
     def parse(body)
       e = JSON.parse(body)
-      return unless e.is_a?(Hash) && e["event_id"].present? && OutboxEvent::TYPES.include?(e["event_type"])
+      return unless e.is_a?(Hash) && e["event_id"].to_s.match?(UUID) && OutboxEvent::TYPES.include?(e["event_type"])
+      return unless e["data"].is_a?(Hash)
 
-      { event_id: e["event_id"], event_type: e["event_type"], center_id: Integer(e["center_id"]),
-        payload: e["data"].to_h, occurred_at: Time.iso8601(e["occurred_at"]), received_at: Time.current }
-    rescue JSON::ParserError, ArgumentError, TypeError
+      center_id = Integer(e["center_id"])
+      return unless center_id.between?(1, MAX_ID)
+
+      { event_id: e["event_id"], event_type: e["event_type"], center_id: center_id,
+        payload: e["data"], occurred_at: Time.iso8601(e["occurred_at"].to_s), received_at: Time.current }
+    rescue StandardError
       nil
+    end
+
+    # Inserts the batch; if the database rejects it, retries row by row so only the bad message stays
+    # behind for the dead-letter queue. Returns the messages that are safe to delete.
+    def store(parsed)
+      return [] if parsed.empty?
+
+      DomainEvent.insert_all(parsed.map(&:last), unique_by: :event_id)
+      parsed.map(&:first)
+    rescue ActiveRecord::ActiveRecordError, ActiveModel::RangeError
+      parsed.filter_map do |message, row|
+        DomainEvent.insert_all([ row ], unique_by: :event_id)
+        message
+      rescue ActiveRecord::ActiveRecordError, ActiveModel::RangeError => e
+        Rails.logger.warn("analytics: could not store #{message.message_id}: #{e.class}")
+        nil
+      end
     end
 
     # Keeps polling through outages, including a queue that doesn't exist yet (the consumer can start

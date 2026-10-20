@@ -35,7 +35,16 @@ class OutboxEvent < ApplicationRecord
   private
 
   def payload_has_no_personal_data
-    bad = payload.to_h.keys.grep(FORBIDDEN_PAYLOAD_KEYS)
-    errors.add(:payload, "must not include #{bad.join(', ')}") if bad.any?
+    bad = keys_in(payload).grep(FORBIDDEN_PAYLOAD_KEYS)
+    errors.add(:payload, "must not include #{bad.uniq.join(', ')}") if bad.any?
+  end
+
+  # Every key at any depth, so a nested hash can't smuggle a personal field.
+  def keys_in(value)
+    case value
+    when Hash then value.flat_map { |k, v| [ k.to_s, *keys_in(v) ] }
+    when Array then value.flat_map { |v| keys_in(v) }
+    else []
+    end
   end
 end

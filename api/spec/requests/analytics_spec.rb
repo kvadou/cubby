@@ -40,6 +40,13 @@ RSpec.describe "Analytics", type: :request do
     expect(json["pipeline"]["waiting_to_publish"]).to eq(1)
   end
 
+  it "skips a malformed event instead of failing the page" do
+    event("action.approved", at: now - 1.day, action_id: 1, kind: "ratio_risk", proposed_at: "garbage", decided_at: "nope")
+    travel_to(now) { get "/api/v1/centers/#{center.id}/analytics", params: { days: 7 } }
+    expect(response).to have_http_status(:ok)
+    expect(json["median_hours_to_decision"]).to be_nil
+  end
+
   it "is empty, not an error, before any events arrive" do
     get "/api/v1/centers/#{center.id}/analytics"
     expect(json).to include("days" => 30, "median_hours_to_decision" => nil)

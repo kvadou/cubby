@@ -14,7 +14,8 @@ module Events
       published = 0
       while published < limit
         sent = publish_batch
-        break if sent.nil?
+        # Stop when a batch made no progress (e.g. throttling), so the same rows aren't retried in a tight loop.
+        break if sent.nil? || sent.zero?
 
         published += sent
       end
@@ -30,14 +31,23 @@ module Events
         result = Events.sns.publish_batch(topic_arn: Events.topic_arn, publish_batch_request_entries: rows.map { |r| entry(r) })
         ok_ids = result.successful.map { |s| s.id.to_i }
         OutboxEvent.where(id: ok_ids).update_all(published_at: Time.current, updated_at: Time.current) if ok_ids.any?
-        result.failed.each do |f|
-          OutboxEvent.where(id: f.id.to_i).update_all([ "attempts = attempts + 1, last_error = ?, updated_at = ?", "#{f.code}: #{f.message}".first(500), Time.current ])
-        end
+        result.failed.each { |f| record_failure(f) }
         ok_ids.size
       end
     rescue *AWS_TRANSIENT_ERRORS => e
       Rails.logger.warn("outbox publish failed: #{e.class}: #{e.message}")
       nil
+    end
+
+    # Only the caller's own faults (a malformed entry) count toward the cap; throttling and SNS-side errors
+    # are retried on later runs indefinitely. A row that hits the cap is logged loudly.
+    def record_failure(failure)
+      error = "#{failure.code}: #{failure.message}".first(500)
+      bump = failure.sender_fault ? 1 : 0
+      OutboxEvent.where(id: failure.id.to_i).update_all([ "attempts = attempts + ?, last_error = ?, updated_at = ?", bump, error, Time.current ])
+      return unless failure.sender_fault && OutboxEvent.where(id: failure.id.to_i, attempts: MAX_ATTEMPTS..).exists?
+
+      Rails.logger.error("outbox event #{failure.id} gave up after #{MAX_ATTEMPTS} rejected publishes: #{error}")
     end
 
     def entry(row)

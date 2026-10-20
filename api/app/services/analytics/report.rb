@@ -55,7 +55,11 @@ module Analytics
     def median_hours(list)
       hours = list.filter_map do |e|
         proposed, decided = e.payload.values_at("proposed_at", "decided_at")
-        ((Time.iso8601(decided) - Time.iso8601(proposed)) / 3600.0) if proposed && decided
+        begin
+          ((Time.iso8601(decided.to_s) - Time.iso8601(proposed.to_s)) / 3600.0) if proposed && decided
+        rescue ArgumentError
+          nil # a malformed event shouldn't take the page down
+        end
       end.sort
       return nil if hours.empty?
 

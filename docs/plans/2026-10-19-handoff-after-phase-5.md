@@ -18,6 +18,8 @@
 ## Phase 6 notes
 - Create the topic, queue, DLQ, subscription (raw delivery), and bucket in Terraform; set `EVENTS_TOPIC_ARN`, `EVENTS_QUEUE_NAME`, `EVENTS_BUCKET`.
 - IAM per pod: api and sidekiq `sns:Publish` on the topic; events `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:GetQueueUrl`; exporter `s3:PutObject` on the bucket prefix.
+- Queue policy: accept `sqs:SendMessage` only from the topic (`aws:SourceArn` = topic ARN); topic policy: `sns:Publish` only from the app role. Otherwise anyone with queue access could inject events into any center's analytics.
+- Alarm on the DLQ depth and on outbox rows stuck unpublished.
 - Re-run `api/spec/integration/event_pipeline_spec.rb` against real AWS.
 
 ## Still open from phase 4

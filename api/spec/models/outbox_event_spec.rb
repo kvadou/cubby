@@ -44,9 +44,11 @@ RSpec.describe OutboxEvent do
     expect(described_class.order(:id).pluck(:event_type)).to eq(%w[action.snoozed action.resolved])
   end
 
-  it "rejects payloads with personal fields" do
+  it "rejects payloads with personal fields, at any depth" do
     expect { described_class.record!("action.approved", center_id: center.id, payload: { guardian_first_name: "Jo" }) }
       .to raise_error(ActiveRecord::RecordInvalid, /guardian_first_name/)
+    expect { described_class.record!("action.approved", center_id: center.id, payload: { meta: [ { email: "a@b.c" } ] }) }
+      .to raise_error(ActiveRecord::RecordInvalid, /email/)
   end
 
   it "records one proposed event per action a scan creates, and none on a rescan" do
