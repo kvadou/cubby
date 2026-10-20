@@ -38,6 +38,8 @@ module Authentication
   end
 
   def start_cookie_session_for(user)
+    # Signing in again from the same browser retires the session the old cookie pointed at.
+    find_session_by_cookie&.destroy
     Current.session = user.sessions.create!(kind: "cookie", user_agent: request.user_agent, ip_address: request.remote_ip)
     cookies.signed[COOKIE] = { value: Current.session.id, expires: Current.session.expires_at,
                                httponly: true, same_site: :lax, secure: Rails.env.production? }

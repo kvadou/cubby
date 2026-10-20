@@ -2,7 +2,7 @@ module Api
   module V1
     class ClassroomsController < BaseController
       def index
-        date = params[:on].present? ? Date.parse(params[:on]) : current_center.today
+        date = params[:on].present? ? Date.parse(params[:on].to_s) : current_center.today
         rooms = current_center.classrooms.order(:age_min_months).map do |room|
           expected = room.expected_children_on(date)
           {

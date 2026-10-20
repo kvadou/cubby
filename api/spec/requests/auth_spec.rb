@@ -50,6 +50,14 @@ RSpec.describe "Authentication", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    it "retires the previous session when the same browser signs in again" do
+      sign_in(user)
+      first = Session.sole
+      sign_in(user)
+      expect(Session.pluck(:id)).not_to include(first.id)
+      expect(Session.count).to eq(1)
+    end
+
     it "expires after 30 days" do
       sign_in(user)
       travel_to(31.days.from_now) do

@@ -31,6 +31,8 @@ RSpec.describe "API v1", type: :request do
   it "rejects an unparseable date" do
     get "/api/v1/centers/#{center.id}/classrooms", params: { on: "not-a-date" }
     expect(response).to have_http_status(:unprocessable_content)
+    get "/api/v1/centers/#{center.id}/classrooms", params: { on: [ "x" ] }
+    expect(response).to have_http_status(:unprocessable_content)
   end
 
   it "filters invoices to past due" do

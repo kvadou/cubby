@@ -9,8 +9,11 @@ module Api
       CLOSED_LIST_LIMIT = 200
 
       rescue_from ProposedAction::InvalidTransition, ActiveRecord::StaleObjectError do
+        current = current_center.proposed_actions.find_by(id: params[:id])
+        next render(json: { error: "not_found" }, status: :not_found) unless current
+
         render json: { error: "conflict", message: "Someone else already handled this.",
-                       action: serialize([ proposed_action.reload ]).first }, status: :conflict
+                       action: serialize([ current ]).first }, status: :conflict
       end
 
       def index
