@@ -7,6 +7,8 @@
 return if Rails.env.test?
 return if Center.exists?(name: "Little Oaks Early Learning")
 
+require "faker"
+
 Faker::Config.random = Random.new(42)
 Faker::Config.locale = "en-US"
 rng = Random.new(42)

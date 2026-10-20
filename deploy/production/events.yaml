@@ -1,0 +1,31 @@
+# The analytics consumer: long-polls SQS and writes domain_events.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: events
+  labels: { app: events }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: events }
+  template:
+    metadata:
+      labels: { app: events }
+    spec:
+      serviceAccountName: cubby-events
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: events
+          image: cubby-api
+          command: ["./bin/rails", "events:consume"]
+          envFrom:
+            - configMapRef: { name: cubby-config }
+            - secretRef: { name: cubby-secrets }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 50m, memory: 250Mi }
+            limits: { memory: 500Mi }

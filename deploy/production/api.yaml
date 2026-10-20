@@ -1,0 +1,64 @@
+# The Rails API. Before it starts, an init container migrates, seeds the fictional demo (idempotent),
+# and scans so the inbox has work. The internal ALB reaches it on NodePort 30080.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels: { app: api }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: api }
+  template:
+    metadata:
+      labels: { app: api }
+    spec:
+      serviceAccountName: cubby-api
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        - name: prepare
+          image: cubby-api
+          command: ["./bin/rails", "db:prepare", "db:seed", "cubby:scan"]
+          envFrom:
+            - configMapRef: { name: cubby-config }
+            - secretRef: { name: cubby-secrets }
+          securityContext: &locked
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 512Mi }
+      containers:
+        - name: api
+          image: cubby-api
+          args: ["./bin/rails", "server"]
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef: { name: cubby-config }
+            - secretRef: { name: cubby-secrets }
+          securityContext: *locked
+          readinessProbe:
+            httpGet: { path: /up, port: 3000 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /up, port: 3000 }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 300Mi }
+            limits: { memory: 600Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  type: NodePort
+  selector: { app: api }
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30080

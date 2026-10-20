@@ -1,4 +1,5 @@
 require "active_support/core_ext/integer/time"
+require_relative "../../lib/middleware/viewer_address"
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
@@ -27,6 +28,9 @@ Rails.application.configure do
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
 
+  # The real viewer address from CloudFront, so rate limits are per viewer (lib/middleware/viewer_address.rb).
+  config.middleware.insert_after ActionDispatch::RemoteIp, ViewerAddress if ENV["CUBBY_TRUST_VIEWER_ADDRESS"] == "1"
+
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
   config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
@@ -41,7 +45,8 @@ Rails.application.configure do
   config.active_support.report_deprecations = false
 
   # Replace the default in-process memory cache store with a durable alternative.
-  # config.cache_store = :mem_cache_store
+  # Rate limits (login, Ask Cubby) live in the cache, so it must be shared across pods and survive deploys.
+  config.cache_store = :redis_cache_store, { url: ENV["REDIS_URL"], namespace: "cache" }
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
   # config.active_job.queue_adapter = :resque

@@ -36,8 +36,12 @@ function Signed({ list }: { list: Page }) {
       <main className="signin">
         <div className="signin__card" role="alert">
           <Logo />
-          <h1>Cubby is unreachable</h1>
-          <p className="muted">The API didn't respond. Is it running on port 3000?</p>
+          <h1>{import.meta.env.DEV ? "Cubby is unreachable" : "The demo is offline"}</h1>
+          <p className="muted">
+            {import.meta.env.DEV
+              ? "The API didn't respond. Is it running on port 3000?"
+              : "Cubby's servers run on demand and are switched off right now. Try again later."}
+          </p>
           <button type="button" className="button button--primary" onClick={() => me.refetch()}>Try again</button>
         </div>
       </main>

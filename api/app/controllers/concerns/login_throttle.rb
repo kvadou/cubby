@@ -5,8 +5,10 @@ module LoginThrottle
   included do
     rate_limit to: 10, within: 3.minutes, only: :create, scope: "login", name: "ip",
                with: -> { render_rate_limited }
+    # Keyed on email plus IP: one address can't keep a director (or the shared demo directors) locked out
+    # from everywhere, and guessing one account still needs a fresh IP every 5 tries.
     rate_limit to: 5, within: 3.minutes, only: :create, scope: "login", name: "email",
-               by: -> { params[:email_address].to_s.strip.downcase }, with: -> { render_rate_limited }
+               by: -> { "#{params[:email_address].to_s.strip.downcase}|#{request.remote_ip}" }, with: -> { render_rate_limited }
   end
 
   private

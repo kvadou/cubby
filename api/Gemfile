@@ -32,6 +32,9 @@ gem "aws-sdk-sns", "~> 1.122"
 gem "aws-sdk-sqs", "~> 1.120"
 gem "aws-sdk-s3", "~> 1.234"
 
+# Fictional demo data for seeds, which also run on a deployed demo (CUBBY_DEMO=1).
+gem "faker", require: false
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
@@ -47,7 +50,6 @@ group :development, :test do
 
   gem "rspec-rails", "~> 8.0"
   gem "factory_bot_rails"
-  gem "faker"
 end
 
 group :test do

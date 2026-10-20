@@ -44,3 +44,45 @@ jobs:
       - run: bundle exec rubocop
       - run: bundle exec brakeman -q --no-pager --exit-on-warn
       - run: bundle exec bundler-audit check --update
+
+  # main only: build the arm64 image for the Graviton nodes, push it to ECR, and point
+  # deploy/production at it. Flux rolls it out when the cluster is up (docs/plans/2026-10-19-phase6-plan.md).
+  image:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      id-token: write
+      contents: write
+    concurrency: { group: deploy-image, cancel-in-progress: false }
+    defaults:
+      run:
+        working-directory: .
+    env:
+      IMAGE: 731956852586.dkr.ecr.us-east-1.amazonaws.com/cubby-api:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::731956852586:role/cubby-github-deploy
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      # Tags are immutable, so a re-run for the same commit reuses the image already pushed.
+      - name: Build and push
+        run: |
+          if aws ecr describe-images --repository-name cubby-api --image-ids imageTag="${GITHUB_SHA}" >/dev/null 2>&1; then
+            echo "Image for ${GITHUB_SHA} already in ECR"
+          else
+            docker build -t "$IMAGE" api
+            docker push "$IMAGE"
+          fi
+      - name: Point deploy/production at the new image
+        run: |
+          sed -i "s/^    newTag: .*/    newTag: ${GITHUB_SHA}/" deploy/production/kustomization.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/production/kustomization.yaml
+          git diff --cached --quiet && { echo "Already deployed"; exit 0; }
+          git commit -m "Deploy api ${GITHUB_SHA::7}"
+          git pull --rebase origin main
+          git push origin HEAD:main

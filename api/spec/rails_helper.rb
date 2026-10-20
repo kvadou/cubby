@@ -4,6 +4,11 @@ ENV['RAILS_ENV'] ||= 'test'
 require_relative '../config/environment'
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?
+# Specs delete rows. A DATABASE_URL left over from a dev shell (compose sets one) would point them at the
+# development database, so refuse anything that isn't a *_test database.
+unless ActiveRecord::Base.configurations.find_db_config("test")&.database.to_s.end_with?("_test")
+  abort("Refusing to run specs: the test database is #{ActiveRecord::Base.configurations.find_db_config('test')&.database.inspect}, not a *_test database.")
+end
 # Uncomment the line below in case you have `--require rails_helper` in the `.rspec` file
 # that will avoid rails generators crashing because migrations haven't been run yet
 # return unless Rails.env.test?

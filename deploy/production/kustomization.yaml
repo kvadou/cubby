@@ -1,0 +1,14 @@
+# Synced by Flux (infra/terraform/cluster/kubernetes.tf). CI bumps newTag after pushing an image.
+# Config and secrets come from Terraform: cubby-config and cubby-secrets in this namespace.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: cubby
+resources:
+  - serviceaccounts.yaml
+  - api.yaml
+  - sidekiq.yaml
+  - events.yaml
+images:
+  - name: cubby-api
+    newName: 731956852586.dkr.ecr.us-east-1.amazonaws.com/cubby-api
+    newTag: unset

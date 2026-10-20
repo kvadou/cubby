@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Creates the Terraform state bucket (versioned, encrypted, private) in Doug's personal Cubby account.
+# Run once before the first `make base`; safe to re-run. Uses only the `cubby` profile.
+set -euo pipefail
+export AWS_PROFILE=cubby AWS_REGION=us-east-1
+account=$(aws sts get-caller-identity --query Account --output text)
+[ "$account" = "731956852586" ] || { echo "Refusing: profile cubby points at account $account" >&2; exit 1; }
+bucket="cubby-tfstate-$account"
+if aws s3api head-bucket --bucket "$bucket" 2>/dev/null; then
+  echo "State bucket $bucket exists."
+else
+  aws s3api create-bucket --bucket "$bucket" >/dev/null
+  echo "Created state bucket $bucket."
+fi
+aws s3api put-bucket-versioning --bucket "$bucket" --versioning-configuration Status=Enabled
+aws s3api put-public-access-block --bucket "$bucket" --public-access-block-configuration \
+  BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+aws s3api put-bucket-encryption --bucket "$bucket" --server-side-encryption-configuration \
+  '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+echo "State bucket ready."

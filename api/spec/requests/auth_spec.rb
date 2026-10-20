@@ -115,5 +115,15 @@ RSpec.describe "Authentication", type: :request do
                               headers: same_origin, as: :json
       expect(response).to have_http_status(:too_many_requests)
     end
+
+    it "doesn't lock the account out for a different address" do
+      5.times do
+        post "/api/v1/tokens", params: { email_address: user.email_address, password: "wrong wrong wrong" }, as: :json
+      end
+
+      post "/api/v1/tokens", params: { email_address: user.email_address, password: AuthHelpers::PASSWORD },
+                             env: { "REMOTE_ADDR" => "198.51.100.2" }, as: :json
+      expect(response).to have_http_status(:created)
+    end
   end
 end

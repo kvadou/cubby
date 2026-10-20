@@ -1,0 +1,26 @@
+name: infra
+
+on:
+  push:
+    branches: [main]
+    paths: ["infra/**", "deploy/**", ".github/workflows/infra.yml"]
+  pull_request:
+    paths: ["infra/**", "deploy/**", ".github/workflows/infra.yml"]
+
+# Static checks only; nothing here touches AWS. Applies run from `make` on Doug's machine.
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+      - run: terraform fmt -check -recursive infra/terraform
+      - run: |
+          for stack in base cluster; do
+            terraform -chdir=infra/terraform/$stack init -backend=false -input=false
+            terraform -chdir=infra/terraform/$stack validate
+          done
+      - name: Render the Flux manifests
+        run: kubectl kustomize deploy/production > /dev/null
