@@ -79,7 +79,7 @@ resource "aws_iam_instance_profile" "host" {
 
 resource "aws_security_group" "host" {
   name        = "cubby-demo-host"
-  description = "Cubby demo host: only CloudFront's VPC origin in"
+  description = "Cubby demo host: only the CloudFront VPC origin in"
   vpc_id      = aws_vpc.demo.id
 }
 
