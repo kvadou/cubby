@@ -27,8 +27,10 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  account_id  = data.aws_caller_identity.current.account_id
-  github_repo = "kvadou/cubby"
+  account_id = data.aws_caller_identity.current.account_id
+  # The repo uses GitHub's immutable OIDC subject (owner and repo ids), so a renamed or recreated repo
+  # can't inherit this role. `gh api repos/kvadou/cubby/actions/oidc/customization/sub` shows the prefix.
+  github_subject_prefix = "repo:kvadou@15655389/cubby@1426276158"
 
   # AWS managed CloudFront policies (ids from `aws cloudfront list-*-policies --type managed`).
   caching_optimized         = "658327ea-f89d-4fab-a63d-7e88639e58f6"
@@ -270,7 +272,7 @@ resource "aws_iam_role" "deploy" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${local.github_repo}:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub" = "${local.github_subject_prefix}:ref:refs/heads/main"
         }
       }
     }]
