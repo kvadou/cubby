@@ -19,7 +19,7 @@ module Detectors
         oldest = family_invoices.first
         Candidate.new(
           kind: KIND, subject: family, dedupe_key: "#{KIND}:family:#{family.id}",
-          rationale: "#{family.name} owes #{format('$%.2f', total / 100.0)} across #{family_invoices.size} " \
+          rationale: "#{family.name} owes #{ActiveSupport::NumberHelper.number_to_currency(total / 100.0)} across #{family_invoices.size} " \
                      "invoice#{'s' if family_invoices.size > 1}; the oldest is #{oldest.days_past_due(@as_of)} days past due.",
           facts: {
             guardian_first_name: family.guardian_first_name,

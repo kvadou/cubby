@@ -31,3 +31,4 @@ android/**/build/
 android/local.properties
 
 .DS_Store
+.playwright-cli/
