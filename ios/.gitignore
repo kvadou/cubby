@@ -1,0 +1,4 @@
+# Xcode project is generated from project.yml
+Cubby.xcodeproj/
+build/
+*.xcresult

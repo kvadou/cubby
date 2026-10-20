@@ -1,0 +1,27 @@
+name: ios
+
+on:
+  push:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+  pull_request:
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+
+defaults:
+  run:
+    working-directory: ios
+
+# Builds the app and runs the client tests on a simulator. The UI flow test needs the local API with
+# seeded data, so it runs on a developer machine (see README).
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - name: Pick an available iPhone simulator
+        run: |
+          id=$(xcrun simctl list devices available -j | jq -r '[.devices[] | .[] | select(.name | startswith("iPhone"))][0].udid')
+          echo "SIM=$id" >> "$GITHUB_ENV"
+      - run: xcodebuild -project Cubby.xcodeproj -scheme Cubby -destination "id=$SIM" test -only-testing:CubbyTests

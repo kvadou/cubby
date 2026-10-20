@@ -25,7 +25,7 @@ Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go de
 | 4 | Bedrock drafting, policy retrieval, agent, evals | Built and tested; live runs waiting on AWS Bedrock access |
 | 5 | Events: SNS to SQS to analytics | Done |
 | 6 | AWS via Terraform, EKS, FluxCD | Done; runs on demand |
-| 7 | iOS parent app | Planned |
+| 7 | iOS parent app (SwiftUI) | Done; runs in the simulator |
 | 8 | Android parent app | Planned |
 
 The full plan is in [`docs/plans/2026-10-19-cubby-plan.md`](docs/plans/2026-10-19-cubby-plan.md).
@@ -100,6 +100,22 @@ make down        # back to just the site, which says the demo is offline
 ```
 
 Each apply shows its plan and asks before changing anything. Everything runs as the `cubby` AWS profile, and the providers refuse any other account. The demo directors' password is generated per cluster: `terraform -chdir=infra/terraform/cluster output -raw demo_password`.
+
+## Parent app for iOS (phase 7)
+
+A SwiftUI app for parents, in `ios/`: iOS 18+, Swift 6 strict concurrency, with the project generated from `project.yml` by XcodeGen. It has three tabs:
+- **Today:** whether each child is checked in, plus two weeks of attendance in the center's time zone.
+- **Messages:** what the center sent, with unread state.
+- **Billing:** what's due first, then paid invoices.
+
+When a director approves a family message in the web app, it lands in that family's Messages tab, written in the same transaction as the approval. The app signs in with a bearer token kept in the Keychain. On the API side, parents are scoped to their own family the way directors are scoped to their centers, so neither can see the other's endpoints.
+
+```bash
+brew install xcodegen
+cd ios && xcodegen generate && open Cubby.xcodeproj   # run on an iPhone simulator, API on localhost:3000
+```
+
+Sign in as `parent@littleoaks.test` with the local demo password. The UI test (`CubbyUITests`) signs in, walks every tab and saves screenshots; it needs `docker compose up`. CI runs the client tests on a macOS runner.
 
 ## Events and analytics (phase 5)
 

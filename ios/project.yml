@@ -1,0 +1,75 @@
+# Generate the Xcode project with `xcodegen` (brew install xcodegen); Cubby.xcodeproj is not checked in.
+name: Cubby
+options:
+  bundleIdPrefix: dev.kvadou.cubby
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    # Simulator only for now: "Sign to Run Locally". A device build needs Doug's Apple team id.
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+configs:
+  Debug: debug
+  Release: release
+targets:
+  Cubby:
+    type: application
+    platform: iOS
+    sources: [Cubby]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.kvadou.cubby
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Cubby
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+      configs:
+        # The simulator reaches the local API on the Mac; release builds use the deployed demo.
+        Debug:
+          CUBBY_API_URL: "http://localhost:3000"
+        Release:
+          CUBBY_API_URL: "https://drpv8p7ep5jv3.cloudfront.net"
+    info:
+      path: Cubby/Info.plist
+      properties:
+        CubbyAPIURL: $(CUBBY_API_URL)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+  CubbyTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [CubbyTests]
+    dependencies:
+      - target: Cubby
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+  CubbyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [CubbyUITests]
+    dependencies:
+      - target: Cubby
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Cubby:
+    build:
+      targets:
+        Cubby: all
+        CubbyTests: [test]
+        CubbyUITests: [test]
+    test:
+      config: Debug
+      targets: [CubbyTests, CubbyUITests]
