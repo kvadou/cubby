@@ -4,6 +4,8 @@ A preschool operations copilot. Center software usually records what happened; C
 
 Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go deep on one production stack end to end.
 
+**Try it:** [drpv8p7ep5jv3.cloudfront.net](https://drpv8p7ep5jv3.cloudfront.net). "Try the demo" signs you in as a fictional center director, no password needed. The data is fictional and resets every night. Screenshots of the iPhone and Android parent apps are at [/apps](https://drpv8p7ep5jv3.cloudfront.net/apps).
+
 ## Stack
 
 | Layer | Tech |
@@ -26,7 +28,8 @@ Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go de
 | 5 | Events: SNS to SQS to analytics | Done |
 | 6 | AWS via Terraform, EKS, FluxCD | Done; runs on demand |
 | 7 | iOS parent app (SwiftUI) | Done; runs in the simulator |
-| 8 | Android parent app | Planned |
+| 8 | Android parent app (Kotlin, Jetpack Compose) | Done; runs in the emulator |
+| - | Always-on public demo with one-click sign-in | Done |
 
 The full plan is in [`docs/plans/2026-10-19-cubby-plan.md`](docs/plans/2026-10-19-cubby-plan.md).
 
@@ -37,7 +40,7 @@ docker compose up --build          # Postgres (5433), Redis (6380), API (3000), 
 cd web && npm install && npm run dev   # director app on http://localhost:5173
 ```
 
-Compose seeds **Little Oaks Early Learning**, a fictional center with four classrooms, about 55 families, a waitlist, six past-due invoices, and one classroom deliberately under ratio tomorrow (all dates relative to today), plus a second center, **Birchwood Kids Club**, so tenancy is visible. Sign in as `renee@littleoaks.test` (Little Oaks) or `marcus@birchwood.test` (Birchwood); the local demo password is in `api/db/seeds/demo_users.rb`, and the sign-in page has a "fill in the demo director" link in development. Demo users are only ever seeded in development.
+Compose seeds **Little Oaks Early Learning**, a fictional center with four classrooms, about 55 families, a waitlist, six past-due invoices, and one classroom deliberately under ratio tomorrow (all dates relative to today), plus a second center, **Birchwood Kids Club**, so tenancy is visible. Sign in as `renee@littleoaks.test` (Little Oaks) or `marcus@birchwood.test` (Birchwood); the local demo password is in `api/db/seeds/demo_users.rb`. The sign-in page's "Try the demo" button signs in as Renee with no password, locally and on the deployed demo. Demo users are only ever seeded in development.
 
 Without Docker for the app itself:
 
@@ -77,7 +80,12 @@ Every endpoint except sign-in needs a session, and every center endpoint is scop
 
 ## Deploy (phase 6)
 
-The demo runs on AWS on demand: about $5 a day while up, a few cents a month while down. Details and decisions: [`docs/plans/2026-10-19-phase6-plan.md`](docs/plans/2026-10-19-phase6-plan.md), [`docs/prior-art/2026-10-19-phase6-deploy.md`](docs/prior-art/2026-10-19-phase6-deploy.md).
+There are two ways to run it on AWS, and CloudFront sends `/api/*` to whichever is up (the cluster wins):
+
+- **Always-on demo (`make demo`, about $18 a month):** one t4g.small instance runs Postgres, Valkey, the API, Sidekiq and the events consumer under Docker Compose, behind the same CloudFront distribution through a VPC origin. Only CloudFront's VPC-origin security group can reach it; there's no SSH (Session Manager instead), and Postgres and Valkey are on an internal Docker network with no way out. Every 5 minutes it deploys the image tag CI committed to `deploy/production`, the same GitOps source Flux reads. A nightly job rebuilds the fictional data. Details: [`docs/plans/2026-10-20-demo-host-plan.md`](docs/plans/2026-10-20-demo-host-plan.md).
+- **The full EKS stack (`make up` / `make down`, about $5 a day while up):** what's described below.
+
+The EKS stack runs on demand: about $5 a day while up, a few cents a month while down. Details and decisions: [`docs/plans/2026-10-19-phase6-plan.md`](docs/plans/2026-10-19-phase6-plan.md), [`docs/prior-art/2026-10-19-phase6-deploy.md`](docs/prior-art/2026-10-19-phase6-deploy.md).
 
 - **Edge:**
   - CloudFront serves the React build from S3.
@@ -95,11 +103,13 @@ The demo runs on AWS on demand: about $5 a day while up, a few cents a month whi
 ```bash
 make bootstrap   # once: Terraform state bucket
 make base        # persistent pieces (registry, site, budget, CI role)
+make demo        # always-on demo host, about 10 minutes (first boot seeds itself)
 make up          # cluster, about 25 minutes
-make down        # back to just the site, which says the demo is offline
+make down        # cluster gone; the site goes back to the demo host (or says it's offline)
+make demo-down   # demo host gone
 ```
 
-Each apply shows its plan and asks before changing anything. Everything runs as the `cubby` AWS profile, and the providers refuse any other account. The demo directors' password is generated per cluster: `terraform -chdir=infra/terraform/cluster output -raw demo_password`.
+Each apply shows its plan and asks before changing anything. Everything runs as the `cubby` AWS profile, and the providers refuse any other account. Visitors use the one-click demo; for a typed sign-in, the password is generated per stack: `terraform -chdir=infra/terraform/demo output -raw demo_password` (or `cluster`).
 
 ## Parent app for iOS (phase 7)
 
@@ -116,6 +126,18 @@ cd ios && xcodegen generate && open Cubby.xcodeproj   # run on an iPhone simulat
 ```
 
 Sign in as `parent@littleoaks.test` with the local demo password. The UI test (`CubbyUITests`) signs in, walks every tab and saves screenshots; it needs `docker compose up`. CI runs the client tests on a macOS runner.
+
+## Parent app for Android (phase 8)
+
+The same three tabs in Kotlin and Jetpack Compose (Material 3), in `android/`: Android 10+, with OkHttp and kotlinx.serialization against the same family endpoints. The bearer token is encrypted with an AES key held in the Android Keystore, and backups are off. Debug builds talk to the Mac's `localhost:3000` through the emulator's `10.0.2.2` (cleartext allowed for that host only, debug only); release builds use the CloudFront URL.
+
+```bash
+brew install openjdk@21 && brew install --cask android-commandlinetools   # then sdkmanager for platform 37 and an emulator image
+cd android && ./gradlew testDebugUnitTest assembleDebug
+./gradlew connectedDebugAndroidTest   # with an emulator running and `docker compose up`
+```
+
+`ParentFlowTest` signs in as `parent@littleoaks.test`, walks every tab, saves screenshots to `/data/local/tmp/cubby-screenshots` on the emulator, and signs out. CI runs the unit tests, lint and a release build.
 
 ## Events and analytics (phase 5)
 

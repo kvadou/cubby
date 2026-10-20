@@ -1,0 +1,26 @@
+name: android
+
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/android.yml"]
+  pull_request:
+    paths: ["android/**", ".github/workflows/android.yml"]
+
+defaults:
+  run:
+    working-directory: android
+
+# Builds the app and runs the client tests on the JVM. The UI flow test needs the local API with seeded
+# data and an emulator, so it runs on a developer machine (see README).
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew --console=plain testDebugUnitTest lintDebug assembleRelease
