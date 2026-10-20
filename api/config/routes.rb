@@ -9,6 +9,18 @@ Rails.application.routes.draw do
       resource :me, only: :show, controller: "me"
       get "evals/latest", to: "evals#latest"
 
+      # Parents (mobile): scoped to the signed-in user's family.
+      scope "family", module: "parent", as: "family" do
+        get "/", to: "families#show"
+        resources :children, only: [] do
+          resources :attendance, only: :index, controller: "attendances"
+        end
+        resources :messages, only: :index do
+          post :read, on: :member
+        end
+        resources :invoices, only: :index
+      end
+
       resources :centers, only: %i[index show] do
         resources :classrooms, only: :index
         resources :enrollments, only: :index

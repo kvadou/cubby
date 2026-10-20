@@ -50,12 +50,25 @@ class ProposedAction < ApplicationRecord
 
   def family_facing? = FAMILY_FACING.include?(kind)
 
+  # Approving a family-facing action delivers the message to the family's in-app inbox in the same
+  # transaction, so an approval never exists without its message.
   def approve!(by:, final_body: nil, now: Time.current)
     body = final_body || draft_body
-    transition!(to: "approved", actor: by, now: now,
-                attrs: { final_body: body, suppressed_until: cooldown_end(now) },
-                event: { family_facing: family_facing?, message_source: message_source(body), draft_status: draft_status,
-                         draft_cost_micros: draft_cost_micros })
+    self.class.transaction do
+      transition!(to: "approved", actor: by, now: now,
+                  attrs: { final_body: body, suppressed_until: cooldown_end(now) },
+                  event: { family_facing: family_facing?, message_source: message_source(body), draft_status: draft_status,
+                           draft_cost_micros: draft_cost_micros })
+      deliver_to_family!(body, now) if family_facing?
+    end
+  end
+
+  # Past-due tuition is about a family; a waitlist follow-up is about a child's enrollment.
+  def family
+    case subject
+    when Family then subject
+    when Enrollment then subject.child.family
+    end
   end
 
   def dismiss!(by:, reason: nil, now: Time.current)
@@ -106,6 +119,15 @@ class ProposedAction < ApplicationRecord
   end
 
   private
+
+  DEFAULT_SUBJECTS = { "stale_waitlist" => "A spot at %s", "past_due_invoice" => "Your tuition balance at %s" }.freeze
+
+  def deliver_to_family!(body, now)
+    raise InvalidTransition, "action #{id} has no message to send" if body.blank?
+
+    FamilyMessage.create!(family: family, center_id: center_id, proposed_action_id: id, body: body, sent_at: now,
+                          subject: draft_subject.presence || format(DEFAULT_SUBJECTS.fetch(kind), center.name))
+  end
 
   # How the approved message came about, for the "drafts used as written" metric.
   def message_source(body)

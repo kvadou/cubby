@@ -30,3 +30,23 @@ end
 end
 
 puts "Demo directors: renee@littleoaks.test (Little Oaks), marcus@birchwood.test (Birchwood)."
+
+# A demo parent for the mobile app: a Little Oaks family with an enrolled child, attendance, and a
+# past-due invoice, so a director approving that family's tuition nudge shows up in the parent's inbox.
+family = little_oaks.families
+                    .where(id: Invoice.past_due(little_oaks.today).select(:family_id))
+                    .where(id: Child.joins(:enrollments).merge(Enrollment.where(status: "enrolled")).select(:family_id))
+                    .order(:id).first!
+parent = User.find_or_create_by!(email_address: "parent@littleoaks.test") do |u|
+  u.name = family.primary_guardian_name
+  u.password = password
+end
+parent.guardianships.find_or_create_by!(family: family)
+family.messages.find_or_create_by!(proposed_action_id: nil, subject: "Welcome to Cubby") do |m|
+  m.center = little_oaks
+  m.body = "Hi #{family.guardian_first_name}, this is where Little Oaks will send updates about your family. " \
+           "You can also see check-in times and tuition here. - #{little_oaks.director_name}"
+  m.sent_at = Time.current
+end
+
+puts "Demo parent: parent@littleoaks.test (#{family.name})."

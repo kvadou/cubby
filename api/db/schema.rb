@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -120,6 +120,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000004) do
     t.datetime "updated_at", null: false
     t.index ["center_id", "email"], name: "index_families_on_center_id_and_email", unique: true
     t.index ["center_id"], name: "index_families_on_center_id"
+  end
+
+  create_table "family_messages", force: :cascade do |t|
+    t.bigint "family_id", null: false
+    t.bigint "center_id", null: false
+    t.bigint "proposed_action_id"
+    t.string "subject", null: false
+    t.text "body", null: false
+    t.datetime "sent_at", null: false
+    t.datetime "read_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["center_id"], name: "index_family_messages_on_center_id"
+    t.index ["family_id", "sent_at"], name: "index_family_messages_on_family_id_and_sent_at"
+    t.index ["family_id"], name: "index_family_messages_on_family_id"
+    t.index ["proposed_action_id"], name: "index_family_messages_on_proposed_action_id", unique: true
+  end
+
+  create_table "guardianships", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "family_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id"], name: "index_guardianships_on_family_id"
+    t.index ["user_id", "family_id"], name: "index_guardianships_on_user_id_and_family_id", unique: true
+    t.index ["user_id"], name: "index_guardianships_on_user_id"
   end
 
   create_table "invoices", force: :cascade do |t|
@@ -307,6 +333,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000004) do
   add_foreign_key "enrollments", "children"
   add_foreign_key "enrollments", "classrooms"
   add_foreign_key "families", "centers"
+  add_foreign_key "family_messages", "centers"
+  add_foreign_key "family_messages", "families"
+  add_foreign_key "family_messages", "proposed_actions"
+  add_foreign_key "guardianships", "families"
+  add_foreign_key "guardianships", "users"
   add_foreign_key "invoices", "families"
   add_foreign_key "memberships", "centers"
   add_foreign_key "memberships", "users"

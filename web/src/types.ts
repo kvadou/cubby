@@ -11,6 +11,7 @@ export interface Center {
 export interface Me {
   user: { id: number; name: string; email_address: string };
   centers: Center[];
+  families: { id: number; name: string; center_name: string }[];
 }
 
 export interface PastDueFacts {

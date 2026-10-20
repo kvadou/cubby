@@ -20,7 +20,8 @@ module Api
       def me_json
         {
           user: Current.user.slice(:id, :name, :email_address),
-          centers: Current.user.centers.order(:name).map { |c| c.slice(:id, :name, :city, :timezone) }
+          centers: Current.user.centers.order(:name).map { |c| c.slice(:id, :name, :city, :timezone) },
+          families: Current.user.families.includes(:center).order(:id).map { |f| { id: f.id, name: f.name, center_name: f.center.name } }
         }
       end
     end

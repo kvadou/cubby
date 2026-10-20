@@ -48,22 +48,15 @@ function Signed({ list }: { list: Page }) {
     );
   }
   if (!me.data) return <Navigate to="/sign-in" replace />;
+  if (me.data.centers.length === 0 && me.data.families.length > 0) return <FamilyOnly me={me.data} />;
   return <Shell me={me.data} list={list} />;
 }
 
-function Shell({ me, list }: { me: Me; list: Page }) {
+function useSignOut() {
   const client = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
-  const center = me.centers[0];
-  const [asking, setAsking] = useState(false);
-  const inbox = useQuery({
-    queryKey: ["actions", center?.id, "inbox"],
-    queryFn: () => api.actions(center!.id, "inbox"),
-    enabled: Boolean(center),
-  });
-
-  const signOut = async () => {
+  return async () => {
     try {
       await api.signOut();
     } catch {
@@ -74,6 +67,36 @@ function Shell({ me, list }: { me: Me; list: Page }) {
     client.setQueryData(["me"], null);
     navigate("/sign-in", { replace: true });
   };
+}
+
+// Parents use the mobile app; this web app is for center directors.
+function FamilyOnly({ me }: { me: Me }) {
+  const signOut = useSignOut();
+
+  return (
+    <main className="signin">
+      <div className="signin__card">
+        <Logo />
+        <h1>Hi {me.user.name.split(" ")[0]}</h1>
+        <p className="muted">
+          This site is for center directors. Messages, check-ins, and tuition from {me.families[0]?.center_name ?? "your center"} are in
+          the Cubby app on your phone.
+        </p>
+        <button type="button" className="button button--quiet" onClick={signOut}>Sign out</button>
+      </div>
+    </main>
+  );
+}
+
+function Shell({ me, list }: { me: Me; list: Page }) {
+  const signOut = useSignOut();
+  const center = me.centers[0];
+  const [asking, setAsking] = useState(false);
+  const inbox = useQuery({
+    queryKey: ["actions", center?.id, "inbox"],
+    queryFn: () => api.actions(center!.id, "inbox"),
+    enabled: Boolean(center),
+  });
 
   return (
     <div className="app">

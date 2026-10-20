@@ -20,9 +20,14 @@ RSpec.describe ProposedAction, type: :model do
 
     it "rejects a stale copy that someone else already changed" do
       stale = described_class.find(action.id)
-      action.approve!(by: "renee")
+      action.approve!(by: "renee", final_body: "Hi Jordan")
       expect { stale.dismiss!(by: "sam") }.to raise_error(described_class::InvalidTransition)
       expect(ProposedActionTransition.where(proposed_action_id: action.id).count).to eq(1)
+    end
+
+    it "won't approve a family-facing action with nothing to send" do
+      expect { action.approve!(by: "renee") }.to raise_error(described_class::InvalidTransition, /no message/)
+      expect(action.reload).to be_proposed
     end
 
     it "rolls back the status change if the history row fails" do
@@ -32,7 +37,7 @@ RSpec.describe ProposedAction, type: :model do
     end
 
     it "keeps history rows append-only" do
-      action.approve!(by: "renee")
+      action.approve!(by: "renee", final_body: "Hi Jordan")
       expect { action.transitions.last.update!(actor: "someone else") }.to raise_error(ActiveRecord::ReadOnlyRecord)
     end
 
