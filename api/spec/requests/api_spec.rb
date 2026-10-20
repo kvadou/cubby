@@ -4,7 +4,7 @@ RSpec.describe "API v1", type: :request do
   let(:center) { create(:center) }
   let(:room) { create(:classroom, center: center, capacity: 3, ratio: 2) }
 
-  def json = JSON.parse(response.body)
+  before { sign_in(director_of(center)) }
 
   it "summarizes a center" do
     family = create(:family, center: center)

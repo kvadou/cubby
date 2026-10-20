@@ -7,8 +7,21 @@ module Api
 
       private
 
+      # Every center-scoped query starts here, so another center's data is a 404 that does not
+      # reveal whether it exists (D4).
       def current_center
-        @current_center ||= Center.find(params[:center_id])
+        @current_center ||= Current.user.centers.find(params[:center_id])
+      end
+
+      def render_invalid(message)
+        render json: { error: "invalid", message: message }, status: :unprocessable_content
+      end
+
+      def me_json
+        {
+          user: Current.user.slice(:id, :name, :email_address),
+          centers: Current.user.centers.order(:name).map { |c| c.slice(:id, :name, :city, :timezone) }
+        }
       end
     end
   end

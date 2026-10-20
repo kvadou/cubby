@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -114,6 +114,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_000001) do
     t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'paid'::character varying, 'void'::character varying]::text[])", name: "invoice_status"
   end
 
+  create_table "memberships", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "center_id", null: false
+    t.string "role", default: "director", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["center_id"], name: "index_memberships_on_center_id"
+    t.index ["user_id", "center_id"], name: "index_memberships_on_user_id_and_center_id", unique: true
+    t.index ["user_id"], name: "index_memberships_on_user_id"
+    t.check_constraint "role::text = 'director'::text", name: "membership_role"
+  end
+
   create_table "proposed_action_transitions", force: :cascade do |t|
     t.bigint "proposed_action_id", null: false
     t.string "from_status"
@@ -162,6 +174,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_000001) do
     t.check_constraint "status::text = ANY (ARRAY['proposed'::character varying, 'approved'::character varying, 'dismissed'::character varying, 'resolved'::character varying]::text[])", name: "proposed_action_status"
   end
 
+  create_table "sessions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "kind", null: false
+    t.string "token_digest"
+    t.string "ip_address"
+    t.string "user_agent"
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["token_digest"], name: "index_sessions_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_sessions_on_user_id"
+    t.check_constraint "(kind::text = 'bearer'::text) = (token_digest IS NOT NULL)", name: "bearer_has_digest"
+    t.check_constraint "kind::text = ANY (ARRAY['cookie'::character varying, 'bearer'::character varying]::text[])", name: "session_kind"
+  end
+
   create_table "staff_members", force: :cascade do |t|
     t.bigint "center_id", null: false
     t.string "name", null: false
@@ -185,6 +212,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_000001) do
     t.check_constraint "ends_at > starts_at", name: "shift_ends_after_start"
   end
 
+  create_table "users", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "email_address", null: false
+    t.string "password_digest", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email_address"], name: "index_users_on_email_address", unique: true
+  end
+
   add_foreign_key "attendances", "children"
   add_foreign_key "attendances", "classrooms"
   add_foreign_key "children", "families"
@@ -193,8 +229,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_000001) do
   add_foreign_key "enrollments", "classrooms"
   add_foreign_key "families", "centers"
   add_foreign_key "invoices", "families"
+  add_foreign_key "memberships", "centers"
+  add_foreign_key "memberships", "users"
   add_foreign_key "proposed_action_transitions", "proposed_actions"
   add_foreign_key "proposed_actions", "centers"
+  add_foreign_key "sessions", "users"
   add_foreign_key "staff_members", "centers"
   add_foreign_key "staff_shifts", "classrooms"
   add_foreign_key "staff_shifts", "staff_members"

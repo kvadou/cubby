@@ -4,6 +4,8 @@ class Center < ApplicationRecord
   has_many :children, through: :families
   has_many :staff_members, dependent: :destroy
   has_many :proposed_actions, dependent: :destroy
+  has_many :memberships, dependent: :destroy
+  has_many :users, through: :memberships
 
   validates :name, :city, :timezone, :director_name, presence: true
 

@@ -40,6 +40,8 @@ module Api
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+    # The web app signs in with a cookie (docs/prior-art/2026-10-19-phase3-auth.md, D2).
+    config.middleware.use ActionDispatch::Cookies
 
     config.time_zone = "Central Time (US & Canada)"
     config.active_job.queue_adapter = :sidekiq

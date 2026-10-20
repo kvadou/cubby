@@ -2,11 +2,11 @@ module Api
   module V1
     class CentersController < BaseController
       def index
-        render json: Center.order(:name).map { |c| { id: c.id, name: c.name, city: c.city } }
+        render json: Current.user.centers.order(:name).map { |c| { id: c.id, name: c.name, city: c.city } }
       end
 
       def show
-        center = Center.find(params[:id])
+        center = Current.user.centers.find(params[:id])
         render json: {
           id: center.id,
           name: center.name,

@@ -7,6 +7,8 @@ class ProposedAction < ApplicationRecord
   KINDS = %w[stale_waitlist past_due_invoice ratio_risk].freeze
   STATUSES = %w[proposed approved dismissed resolved].freeze
   RESOLUTIONS = %w[condition_cleared superseded expired].freeze
+  # Kinds whose approval sends a message to a family, so approving one needs a message body.
+  FAMILY_FACING = %w[stale_waitlist past_due_invoice].freeze
   # How long a closed condition stays quiet before a detector may raise it again (D5, D11 proposals).
   COOLDOWNS = { "stale_waitlist" => 14.days, "past_due_invoice" => 7.days }.freeze
   # Facts go to a language model in phase 4, so contact details never belong in them (D8).
@@ -37,6 +39,8 @@ class ProposedAction < ApplicationRecord
   def self.suppressed?(dedupe_key, now = Time.current)
     where(dedupe_key: dedupe_key).where.not(status: "proposed").where("suppressed_until > ?", now).exists?
   end
+
+  def family_facing? = FAMILY_FACING.include?(kind)
 
   def approve!(by:, final_body: nil, now: Time.current)
     transition!(to: "approved", actor: by, now: now,
