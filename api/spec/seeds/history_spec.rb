@@ -15,7 +15,7 @@ RSpec.describe "db/seeds/history.rb" do
     expect(DomainEvent.exists?(live.id)).to be(true)
     history = DomainEvent.where.not(id: live.id)
     expect(history.map { |e| e.payload["demo_history"] }.uniq).to eq([ true ])
-    expect(history.maximum(:occurred_at)).to be < Time.current
+    expect(history.maximum(:occurred_at)).to be < Time.current.in_time_zone(center.timezone).beginning_of_day
 
     report = Analytics::Report.new(center, days: 30).to_h
     expect(report[:totals][:approved]).to be > 20

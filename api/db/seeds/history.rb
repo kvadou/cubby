@@ -50,7 +50,8 @@ latency = { "ratio_risk" => 0.3..3.0, "past_due_invoice" => 1.5..26.0, "stale_wa
       outcome = :approved
       hours += 24
     end
-    decided = [ found + hours.hours, Time.current - 1.hour ].min
+    # Kept before today, so today's numbers are only what visitors do.
+    decided = [ found + hours.hours, tz.local(today.year, today.month, today.day) - rng.rand(10..240).minutes ].min
     decision = base.merge(decided_at: decided.iso8601(6), decided_by_type: outcome == :resolved ? "scan" : "user")
     case outcome
     when :approved
