@@ -25,6 +25,7 @@ gem "redis", "~> 5.4"
 
 # AI: Claude and Titan embeddings on Bedrock, pgvector retrieval
 gem "aws-sdk-bedrockruntime", "~> 1.86"
+gem "anthropic", "~> 2.1"
 gem "neighbor", "~> 1.2"
 
 # Events: transactional outbox to SNS, SQS analytics consumer, S3 export

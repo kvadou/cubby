@@ -31,9 +31,34 @@ RSpec.describe "Policies" do
     expect(Policies::Search.call(center, "late fee", limit: 2).map(&:heading)).to eq(%w[Fees Naps])
   end
 
-  it "returns nothing, without calling Bedrock, when a center has no embedded policies" do
+  it "returns nothing, without calling Bedrock, when a center has no policies" do
     allow(Ai::Bedrock).to receive(:embed)
     expect(Policies::Search.call(center, "fees")).to eq([])
+    expect(Ai::Bedrock).not_to have_received(:embed)
+  end
+
+  it "ranks by full text, within one center, when chunks have no embeddings" do
+    other = create(:center)
+    mine = center.policy_documents.create!(title: "H", body: "x")
+    theirs = other.policy_documents.create!(title: "H", body: "x")
+    mine.chunks.create!(center: center, position: 1, heading: "Naps", body: "Quiet time after lunch.")
+    mine.chunks.create!(center: center, position: 2, heading: "Late payments and late fees", body: "A $25 late fee applies after 10 days.")
+    theirs.chunks.create!(center: other, position: 1, heading: "Late fees", body: "Their late fee policy.")
+    allow(Ai::Bedrock).to receive(:embed)
+
+    expect(Policies::Search.call(center, "What is the late fee for tuition?").map(&:heading)).to eq([ "Late payments and late fees" ])
+    expect(Policies::Search.call(center, "the and of")).to eq([])
+    expect(Ai::Bedrock).not_to have_received(:embed)
+  end
+
+  it "stores chunks without embeddings when the provider has no embedding model" do
+    allow(Ai::Bedrock).to receive(:embeddings?).and_return(false)
+    allow(Ai::Bedrock).to receive(:embed)
+    doc = center.policy_documents.create!(title: "Handbook", body: "## A\nOne.\n\n## B\nTwo.")
+
+    expect(Policies::Indexer.call(doc)).to eq(:indexed)
+    expect(doc.chunks.pluck(:heading, :embedding)).to eq([ [ "A", nil ], [ "B", nil ] ])
+    expect(Policies::Indexer.call(doc.reload)).to eq(:unchanged)
     expect(Ai::Bedrock).not_to have_received(:embed)
   end
 end

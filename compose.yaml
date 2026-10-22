@@ -42,6 +42,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       # Events go to the local emulator, never to real AWS, in development.
       EVENTS_AWS_ENDPOINT: http://aws:5000
+      # AI through the Anthropic API instead of Bedrock: export CUBBY_ANTHROPIC_API_KEY before compose up.
+      AI_PROVIDER: ${CUBBY_ANTHROPIC_API_KEY:+anthropic}
+      ANTHROPIC_API_KEY: ${CUBBY_ANTHROPIC_API_KEY:-}
     ports: ["3000:3000"]
     volumes: [./api:/app]
     depends_on:

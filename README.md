@@ -1,6 +1,6 @@
 # Cubby
 
-A preschool operations copilot. Center software usually records what happened; Cubby turns those records into a daily queue of proposed next actions (waitlist follow-ups, past-due tuition nudges, staffing ratio warnings). Plain Ruby rules find the work, Claude on AWS Bedrock drafts the message using the center's own policies, a director approves before anything goes out, parents see it in native iOS and Android apps, and an eval suite grades the drafts.
+A preschool operations copilot. Center software usually records what happened; Cubby turns those records into a daily queue of proposed next actions (waitlist follow-ups, past-due tuition nudges, staffing ratio warnings). Plain Ruby rules find the work, Claude drafts the message using the center's own policies, a director approves before anything goes out, parents see it in native iOS and Android apps, and an eval suite grades the drafts.
 
 Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go deep on one production stack end to end.
 
@@ -14,7 +14,7 @@ Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go de
 | Data | PostgreSQL 17 with pgvector, Redis |
 | Director web app | React + TypeScript (Vite) |
 | Parent apps | SwiftUI (iOS), Kotlin + Jetpack Compose (Android) |
-| AI | Claude on AWS Bedrock, Titan embeddings, pgvector retrieval, tool-use agent, eval suite |
+| AI | Claude on AWS Bedrock or the Anthropic API (one Converse-shaped client), Titan embeddings with pgvector or Postgres full-text retrieval, tool-use agent, eval suite |
 | Infra | Docker, Kubernetes on Amazon EKS, Terraform, GitHub Actions, FluxCD, RDS, ElastiCache, S3 + CloudFront, SNS/SQS, CloudWatch |
 
 ## Status
@@ -24,7 +24,7 @@ Personal project by [Doug Kvamme](https://dougkvamme.vercel.app), built to go de
 | 1 | Rails API, Sidekiq, Postgres, Redis, schema, seed data, RSpec, CI | Done |
 | 2 | Detectors and the idempotent action queue | Done |
 | 3 | Auth, center scoping, React + TypeScript director app | Done |
-| 4 | Bedrock drafting, policy retrieval, agent, evals | Built and tested; live runs waiting on AWS Bedrock access |
+| 4 | Drafting, policy retrieval, agent, evals | Live on the demo through the Anthropic API (Haiku 5.5 drafts, Sonnet 5.5 agent and judge); the Bedrock path is built and waiting on account access |
 | 5 | Events: SNS to SQS to analytics | Done |
 | 6 | AWS via Terraform, EKS, FluxCD | Done; runs on demand |
 | 7 | iOS parent app (SwiftUI) | Done; runs in the simulator |
@@ -161,6 +161,7 @@ approve / dismiss / snooze / scan / draft
 
 Design and evidence: [`docs/prior-art/2026-10-19-phase4-ai.md`](docs/prior-art/2026-10-19-phase4-ai.md).
 
+- **Provider** (`api/app/services/ai/`): `AI_PROVIDER=anthropic` swaps the Bedrock client for `Ai::AnthropicConverse`, which answers the same Converse calls from the Anthropic API, so the drafter, judge, and agent don't change. A forced tool call becomes a structured output (current Sonnet models reject forced `tool_choice`), and handbook search falls back to Postgres full text because there is no embedding model. Locally: export `CUBBY_ANTHROPIC_API_KEY` before `docker compose up`. On the demo host: `bin/set-anthropic-key`.
 - **Drafting** (`api/app/services/drafting/`): after each scan, a Sidekiq job drafts a message for every new family-facing action. Claude on Bedrock (Haiku 4.5 by default, set by `BEDROCK_DRAFT_MODEL`) receives only the action's facts snapshot (never contact details) and the most relevant sections of the center's handbook, and must answer through a forced `submit_draft` tool call with a subject, body, and policy citations.
 - **Checks before a director sees it** (`Drafting::Checks`): the balance is stated, every dollar amount comes from the facts or a cited policy, any fee is backed by a cited policy, the greeting and sign-off are right, there are no contact details, markdown, or placeholders, and the length is sane. A failing draft gets one retry with the failures as feedback; if it still fails, the director gets plain starting text instead. Background draft writes never bump `lock_version`, so a director mid-review is never interrupted.
 - **Retrieval** (`api/app/services/policies/`): the handbook is split into one chunk per section, embedded with Titan Text Embeddings V2 (1024 dimensions) and searched by cosine distance in pgvector (HNSW), always within one center.

@@ -57,6 +57,10 @@ REDIS_URL=redis://cache:6379/0
 SECRET_KEY_BASE=$(param SECRET_KEY_BASE)
 DEMO_PASSWORD=$(param DEMO_PASSWORD)
 ENV
+# Optional: bin/set-anthropic-key stores it. Without it the AI features report unavailable.
+if [ -n "$(param ANTHROPIC_API_KEY)" ]; then
+  printf 'AI_PROVIDER=anthropic\nANTHROPIC_API_KEY=%s\n' "$(param ANTHROPIC_API_KEY)" >> /opt/cubby/app.env
+fi
 echo "REGISTRY=${registry}" > /opt/cubby/host.env
 umask 022
 
