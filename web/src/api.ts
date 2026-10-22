@@ -38,7 +38,8 @@ export const api = {
     request<Me>("/session", { method: "POST", body: { email_address, password } }),
   signOut: () => request<void>("/session", { method: "DELETE" }),
   demo: () => request<DemoInfo>("/demo_session"),
-  signInToDemo: () => request<Me>("/demo_session", { method: "POST" }),
+  // Which site sent the visitor (the server keeps only its host), for a count of where demo visits come from.
+  signInToDemo: () => request<Me>("/demo_session", { method: "POST", body: { referrer: document.referrer } }),
 
   analytics: (centerId: number, days: number) => request<AnalyticsReport>(`/centers/${centerId}/analytics?days=${days}`),
   latestEval: () => request<EvalSummary | null>("/evals/latest"),

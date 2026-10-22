@@ -4,7 +4,8 @@ module Demo
   # Puts the demo back to its seeded state: every table emptied (sessions too, so visitors start over),
   # the fictional center re-seeded with dates relative to today, and a scan so the inbox has work.
   class Reset
-    KEEP = %w[schema_migrations ar_internal_metadata].freeze
+    # demo_visits records who tried the demo and from where; it outlives resets on purpose.
+    KEEP = %w[schema_migrations ar_internal_metadata demo_visits].freeze
 
     def initialize(seed: -> { Rails.application.load_seed })
       @seed = seed

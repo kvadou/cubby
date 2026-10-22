@@ -5,6 +5,7 @@ RSpec.describe Demo::Reset do
     old = create(:center, name: "Visitor-edited center")
     user = create(:user, centers: [ old ])
     user.sessions.create!(kind: "cookie")
+    DemoVisit.record!("https://www.linkedin.com/")
     seeded = nil
 
     described_class.new(seed: -> { seeded = create(:center, name: "Little Oaks Early Learning") }).call
@@ -12,6 +13,7 @@ RSpec.describe Demo::Reset do
     expect(Center.pluck(:name)).to eq([ "Little Oaks Early Learning" ])
     expect(User.count).to eq(0)
     expect(Session.count).to eq(0)
+    expect(DemoVisit.pluck(:referrer_host)).to eq([ "www.linkedin.com" ])
     expect(ActiveRecord::Base.connection.select_value("SELECT count(*) FROM schema_migrations")).to be > 0
     expect(seeded).to be_persisted
   end

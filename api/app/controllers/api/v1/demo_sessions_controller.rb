@@ -14,6 +14,7 @@ module Api
 
       def create
         start_cookie_session_for(@director)
+        DemoVisit.record!(params[:referrer])
         render json: me_json, status: :created
       end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_22_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -61,6 +61,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_000005) do
     t.index ["center_id"], name: "index_classrooms_on_center_id"
     t.check_constraint "age_min_months < age_max_months", name: "classroom_age_range"
     t.check_constraint "capacity > 0 AND ratio > 0", name: "classroom_positive_limits"
+  end
+
+  create_table "demo_visits", force: :cascade do |t|
+    t.string "referrer_host", limit: 100
+    t.datetime "created_at", null: false
+    t.index ["created_at"], name: "index_demo_visits_on_created_at"
   end
 
   create_table "domain_events", force: :cascade do |t|

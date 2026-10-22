@@ -22,6 +22,15 @@ RSpec.describe "Demo sign-in", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it "records the visit with only the referring site's host" do
+      post "/api/v1/demo_session", params: { referrer: "https://dougkvamme.vercel.app/projects/cubby?ref=x" },
+                                   headers: same_origin, as: :json
+      post "/api/v1/demo_session", params: { referrer: "not a url" }, headers: same_origin, as: :json
+      post "/api/v1/demo_session", headers: same_origin, as: :json
+
+      expect(DemoVisit.order(:id).pluck(:referrer_host)).to eq([ "dougkvamme.vercel.app", nil, nil ])
+    end
+
     it "refuses a cross-site request so another page can't sign a visitor in" do
       post "/api/v1/demo_session", headers: { "Sec-Fetch-Site" => "cross-site" }, as: :json
       expect(response).to have_http_status(:forbidden)

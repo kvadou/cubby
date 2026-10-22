@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Lists recent one-click demo sign-ins on the demo host (Central time, referring site's host). Read-only.
+#   bin/demo-visits        last 50
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export AWS_PROFILE=cubby AWS_REGION=us-east-1
+[ "$(aws sts get-caller-identity --query Account --output text)" = "731956852586" ] || { echo "Refusing: not the cubby account" >&2; exit 1; }
+instance=$(terraform -chdir=infra/terraform/demo output -raw instance_id)
+script='cd /opt/cubby && docker compose exec -T api bin/rails runner '"'"'DemoVisit.order(:created_at).last(50).each { |v| puts "#{v.created_at.in_time_zone("America/Chicago").strftime("%a %b %-d %-I:%M %p")}  #{v.referrer_host || "direct"}" }; puts "#{DemoVisit.count} visits total"'"'"' 2>/dev/null'
+id=$(aws ssm send-command --instance-ids "$instance" --document-name AWS-RunShellScript \
+  --parameters "$(jq -n --arg s "$script" '{commands: [$s]}')" --query Command.CommandId --output text)
+for _ in $(seq 1 30); do
+  status=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$instance" --query Status --output text 2>/dev/null || echo Pending)
+  case "$status" in Pending|InProgress|Delayed) sleep 2 ;; *) break ;; esac
+done
+aws ssm get-command-invocation --command-id "$id" --instance-id "$instance" --query StandardOutputContent --output text
