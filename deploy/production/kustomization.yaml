@@ -11,4 +11,4 @@ resources:
 images:
   - name: cubby-api
     newName: 731956852586.dkr.ecr.us-east-1.amazonaws.com/cubby-api
-    newTag: 915e6e7909d73e5a50aafba482908f96983e2c5f
+    newTag: 5026466f7e0a798a82c1ac45b3e36916a5c3357f
