@@ -179,12 +179,17 @@ function DailyChart({ daily }: { daily: AnalyticsReport["daily"] }) {
 }
 
 function PipelineNote({ report }: { report: AnalyticsReport }) {
-  const { waiting_to_publish, last_received_at } = report.pipeline;
+  const { waiting_to_publish, last_received_at, demo_history_through } = report.pipeline;
   return (
     <p className="pipeline muted">
       Built from events delivered through SNS and SQS.{" "}
       {last_received_at ? `Last event received ${timeAgo(last_received_at)}.` : "No events received yet."}{" "}
       {waiting_to_publish > 0 ? `${waiting_to_publish} waiting to publish.` : "Nothing waiting to publish."}
+      {demo_history_through && (
+        <>
+          {" "}Activity before today is generated demo history; decisions you make in the inbox arrive live.
+        </>
+      )}
     </p>
   );
 }

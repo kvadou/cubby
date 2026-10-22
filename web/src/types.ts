@@ -119,7 +119,7 @@ export interface AnalyticsReport {
   messages: { approved: number; draft_as_is: number; draft_edited: number; starter_or_own: number };
   ai: { drafts: number; drafts_ready: number; cost_micros: number; cost_per_approved_message_micros: number | null };
   daily: { date: string; approved: number; dismissed: number }[];
-  pipeline: { waiting_to_publish: number; last_received_at: string | null };
+  pipeline: { waiting_to_publish: number; last_received_at: string | null; demo_history_through: string | null };
 }
 
 // Present only on a demo deployment (and locally); elsewhere the endpoint is a 404.

@@ -94,7 +94,9 @@ module Analytics
 
     def pipeline
       { waiting_to_publish: OutboxEvent.unpublished.where(center: @center).count,
-        last_received_at: DomainEvent.for_center(@center).maximum(:received_at) }
+        last_received_at: DomainEvent.for_center(@center).maximum(:received_at),
+        # Generated past activity on the demo (db/seeds/history.rb); the page labels it as such.
+        demo_history_through: events.select { |e| e.payload["demo_history"] }.map(&:occurred_at).max }
     end
   end
 end
